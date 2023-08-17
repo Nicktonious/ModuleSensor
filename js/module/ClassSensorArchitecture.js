@@ -28,7 +28,7 @@ class ClassMiddleSensor extends ClassAncestorSensor {
      * @param {Object} _sensor_props 
      * @param {InitArgs} _opts 
      */
-    constructor(_opts, _sensor_props) {
+    constructor(_sensor_props) {
         console.log(_sensor_props);
         ClassAncestorSensor.apply(this, [_sensor_props]);
         this._Values = [];
@@ -212,7 +212,7 @@ class ClassAlarms {
         this._ZoneType = (low, high, cb) => ({
             low: low || -Infinity,     
             high: high || Infinity,
-            callback: cb || (x => x),
+            callback: cb || (function(x) {}),
     
             is(val) {       //проверка на то, принадлежит ли числовое значение зоне аларма 
                 return val >= this.high || val <= this.low;
