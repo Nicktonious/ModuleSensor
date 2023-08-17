@@ -214,7 +214,7 @@ class ClassAlarms {
             high: high || Infinity,
             callback: cb || (function(x) {}),
     
-            is(val) {       //проверка на то, принадлежит ли числовое значение зоне аларма 
+            is: function(val) {       //проверка на то, принадлежит ли числовое значение зоне аларма 
                 return val >= this.high || val <= this.low;
             } 
         });
