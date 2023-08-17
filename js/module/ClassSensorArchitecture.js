@@ -29,6 +29,7 @@ class ClassMiddleSensor extends ClassAncestorSensor {
      * @param {InitArgs} _opts 
      */
     constructor(_opts, _sensor_props) {
+        console.log(_sensor_props);
         ClassAncestorSensor.apply(this, [_sensor_props]);
         this._Values = [];
         this._Channels = new Array(this._QuantityChannel).fill({ _Limits: new ClassLimits(),
