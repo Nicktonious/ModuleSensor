@@ -21,15 +21,22 @@ class ClassChannel {
         this._Limits = new ClassLimits();
         this._Alarms = new ClassAlarms();
 
-        Object.getOwnPropertyNames(sensor)
-            .filter(prop => typeof this[prop] === 'function')
-            .filter(prop => prop.startsWith(`Ch${num}` || prop === 'Init'))
+        Object.getOwnPropertyNames(ClassMiddleSensor.prototype)
+            .filter(prop => typeof sensor[prop] === 'function' && prop !== 'constructor')
+            // .forEach(prop => {
+            //     let methodName = prop.split('_').slice(1).join('_');
+            //     if (prop.includes('Start') || prop.includes('ChangeFrequency')) {
+            //         this[methodName] = inVal => sensor[prop].bind(prop)(this._Limits.HandleInValue(inVal));
+            //     }
+            //     this[methodName] = sensor[prop].bind(prop);
+            // });
             .forEach(prop => {
-                let methodName = prop.split('_').slice(1).join('_');
-                if (prop.includes('Start') || prop.includes('ChangeFrequency')) {
-                    this[methodName] = inVal => sensor[prop].bind(prop)(this._Limits.HandleInValue(inVal));
+                this[prop] = function (_args) {
+                    let args = Array.from(arguments);
+                    args.push(this._NumChannel);
+                    // console.log(`args:${args}`);
+                    return sensor[prop].apply(sensor, args);
                 }
-                this[methodName] = sensor[prop].bind(prop);
             });
         
         sensor._Channels[num] = this;

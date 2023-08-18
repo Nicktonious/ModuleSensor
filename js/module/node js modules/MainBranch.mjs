@@ -6,15 +6,15 @@ import { ClassChannel, ClassAlarms, ClassLimits } from './ChannelBranch.mjs';
  */
 class ClassAncestorSensor {
     constructor(_sensor_props) {
-        this._Name = _sensor_props.Name;
-        this._Type = _sensor_props.Type;
-        this._ChannelNames = _sensor_props.ChannelNames;
-        this._TypeInSignal = _sensor_props.TypeInSignal;
-        this._TypeOutSignal = _sensor_props.TypeOutSignal
+        this._Name = _sensor_props._Name;
+        this._Type = _sensor_props._Type;
+        this._ChannelNames = _sensor_props._ChannelNames;
+        this._TypeInSignal = _sensor_props._TypeInSignal;
+        this._TypeOutSignal = _sensor_props._TypeOutSignal
         // this._NumMinPortsRequired = 2; //TODO: обдумать
-        this._QuantityChannel = _sensor_props.QuantityChannel;
-        this._BusType = _sensor_props.BusType;
-        this._ManufacturingData = _sensor_props.ManufacturingData;
+        this._QuantityChannel = _sensor_props._QuantityChannel;
+        this._BusType = _sensor_props._BusType;
+        this._ManufacturingData = _sensor_props._ManufacturingData;
     }
 }
 /**
@@ -77,6 +77,7 @@ class ClassMiddleSensor extends ClassAncestorSensor {
     Reset() { }
     Run() { }
     ChangeFrequency() { }
+    Configure() { }
 }
 
 

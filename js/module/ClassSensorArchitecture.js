@@ -9,6 +9,13 @@ class ClassAncestorSensor {
         this._Name = _sensor_props._Name;
         this._Type = _sensor_props._Type;
         this._ChannelNames = _sensor_props._ChannelNames;
+        this._ChannelNums = (channel_names => {             // [ch0_name, ch1_name] -> {ch0_name: 0, ch1_name: 1}
+            let arr = [];
+            for (let k of Object.keys(channel_names)) {
+                arr[channel_names[k]] = k;
+            }                                            
+            return arr;
+        })(this._ChannelNames);                             
         this._TypeInSignal = _sensor_props._TypeInSignal;
         this._TypeOutSignal = _sensor_props._TypeOutSignal
         // this._NumMinPortsRequired = 2; //TODO: обдумать
@@ -29,15 +36,14 @@ class ClassMiddleSensor extends ClassAncestorSensor {
      * @param {InitArgs} _opts 
      */
     constructor(_sensor_props) {
-        console.log(_sensor_props);
         ClassAncestorSensor.apply(this, [_sensor_props]);
         this._Values = [];
-        this._Channels = new Array(this._QuantityChannel).fill({ _Limits: new ClassLimits(),
-                                                                 _Alarms: new ClassAlarms() });
-        // this._Channels = [];
-        // for (let i = 0; i < this._QuantityChannel; i++) {
-        //     this._Channels[i] = new ClassChannel(this, i);
-        // }
+        // this._Channels = new Array(this._QuantityChannel).fill({ _Limits: new ClassLimits(),
+                                                                //  _Alarms: new ClassAlarms() });
+        this._Channels = [];
+        for (let i = 0; i < this._QuantityChannel; i++) {
+            this._Channels[i] = new ClassChannel(this, i);
+        }
         
         for (let i = 0; i < this._QuantityChannel; i++) {
             Object.defineProperty(this, `Ch${i}_Value`, {
@@ -76,6 +82,7 @@ class ClassMiddleSensor extends ClassAncestorSensor {
     Stop() { }
     Reset() { }
     Run() { }
+    Configure() { }
     ChangeFrequency() { }
 }
 /**
@@ -100,9 +107,18 @@ class ClassChannel {
         this._Limits = new ClassLimits();
         this._Alarms = new ClassAlarms();
 
-        ['Init', 'Start', 'Stop', 'Reset', 'Run', 'ChangeFrequeny']
+        ['Init', 'Start', 'Stop', 'Reset', 'Run', 'ChangeFrequeny', 'Configure']
         .filter(prop => typeof sensor[prop] === 'function')
-        .forEach(prop => this[prop] = sensor[prop].bind(sensor));
+        .forEach(prop => {
+            if (prop !== 'Init') this[prop] = sensor[prop].bind(sensor); //Предварительно это единственный метод в котором не требуется указывать канал
+            else {
+                this[prop] = _args => {             //замыкание в котором сохраняются переданные аргументы
+                    let args = Array.from(_args);
+                    args.push(this._NumChannel);    //последним аргументом добавляется номер канала
+                    this[prop] = sensor[prop].apply(sensor, args);  //apply используется для того чтобы вызвать оригинальный метод, сохранив контекст и передавая аргументы в виде массива
+                }
+            }
+        });
         
         sensor._Channels[num] = this;
     }
@@ -209,14 +225,18 @@ class ClassAlarms {
     constructor() {
         //TODO: add proper validation of numbers
 
-        this._ZoneType = (low, high, cb) => ({
+        this._ZoneType = (low, high, cb_low, cb_high) => ({
             low: low || -Infinity,     
             high: high || Infinity,
-            callback: cb || (function(x) {}),
-    
+            callbackLow: cb_low || (function(x) {}),
+            callbackHigh: cb_high || cb_low || (function(x) {}),
             is: function(val) {       //проверка на то, принадлежит ли числовое значение зоне аларма 
-                return val >= this.high || val <= this.low;
-            } 
+                return val >= this.high || val < this.low;
+            },
+            invoke: function(val) {
+                if (val >= this.high) this.callbackHigh(val);
+                else this.callbackLow(val)
+            }
         });
         this._Zones = { red: this._ZoneType(), yellow: this._ZoneType(), green: { callback: x => x } };
 
@@ -225,31 +245,34 @@ class ClassAlarms {
 
     /**
      * @method
-     * Метод устанавливает границы и колбэк желтой зоны
+     * Метод устанавливает границы и колбэки нижней и верхней желтой зоны. Если передается только один колбэк, то он будет вызыываться в обоих случаях
      * @param {Number} _low 
      * @param {Number} _high 
-     * @param {Function} _callback 
+     * @param {Function} _callbackLow колбэк нижней желтой зоны
+     * @param {Function} _callbackHigh колбэк верхней желтой зоны
      */
-    SetYellowZone(_low, _high, _callback) {
+    SetYellowZone(_low, _high, _callbackLow, _callbackHigh) {
         if (typeof _low !== 'number'|| typeof _high !== 'number' || _low >= _high) throw new Error();
         if (this._Zones.red.isUsed &&
            (_low <= this._Zones.red.low || _high >= this._Zones.red.high)) throw new Error(); 
-        this._Zones.yellow = this._ZoneType(_low, _high, _callback);
+        this._Zones.yellow = this._ZoneType(_low, _high, _callbackLow, _callbackHigh);
         this._Zones.yellow.isUsed = true;
     }
     /**
      * @method
-     * Метод устанавливает границы и колбэк красной зоны
+     * Метод устанавливает границы и колбэки нижней и верхней красной зоны. Если передается только один колбэк, то он будет вызыываться в обоих случаях
      * @param {Number} _low 
      * @param {Number} _high 
-     * @param {Function} _callback 
+     * @param {Function} _callbackLow колбэк нижней красной зоны
+     * @param {Function} _callbackHigh колбэк верхней красной зоны
+     * 
      */
-    SetRedZone(_low, _high, _callback) {
+    SetRedZone(_low, _high, _callbackLow, _callbackHigh) {
         if (typeof _low !== 'number'|| typeof _high !== 'number' || _low >= _high) throw new Error();
         if (this._Zones.yellow.isUsed && 
            (_low >= this._Zones.yellow.low || _high <= this._Zones.yellow.high)) throw new Error(); 
+        this._Zones.red = this._ZoneType(_low, _high, _callbackLow, _callbackHigh);
         this._Zones.red.isUsed = true; 
-        this._Zones.red = this._ZoneType(_low, _high, _callback);
     }
     /**
      * @method
@@ -258,7 +281,7 @@ class ClassAlarms {
      */
     SetGreenZone(_callback) {
         if (typeof _callback !== 'function') throw new Error();
-        this._Zones.green = { callback: _callback };  
+        this._Zones.green = { invoke: _callback };  
     }
     /**
      * @method
@@ -276,4 +299,4 @@ class ClassAlarms {
     }
 }
 
-exports = { ClassSensor: ClassMiddleSensor };
+exports = { ClassMiddleSensor: ClassMiddleSensor };
