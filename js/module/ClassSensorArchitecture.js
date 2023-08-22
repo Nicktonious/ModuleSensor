@@ -93,8 +93,8 @@ class ClassMiddleSensor extends ClassAncestorSensor {
      */
     Init(_sensor_props) {
         if (this._IsInited) return;
-        super.Init(_sensor_props);
-        // ClassAncestorSensor.prototype.Init.apply(this, [_sensor_props]);
+        // super.Init(_sensor_props);
+        ClassAncestorSensor.prototype.Init.apply(this, [_sensor_props]);
         for (let i = 0; i < this._QuantityChannel; i++) {
             try {
                 this._Channels[i] = new ClassChannel(this, i);  // инициализируем и сохраняем объекты каналов
