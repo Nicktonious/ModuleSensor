@@ -413,5 +413,5 @@ class ClassAlarms {
         }
     }
 }
-
-exports = { ClassMiddleSensor: ClassMiddleSensor };
+exports = ClassMiddleSensor;
+// exports = { ClassMiddleSensor: ClassMiddleSensor };
