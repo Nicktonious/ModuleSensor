@@ -13,7 +13,7 @@
  * @typedef _opts - объект хранящий системные сущности необходимые для инициализации и обеспечения работы датичика
  * @property {[Pin]} _Pins
  * @property {Bus} _Bus
- * @property {Number} _Adress
+ * @property {Number} _Address
  * @property {Number | String} _Repeatability   
  */
 /**
@@ -29,7 +29,7 @@ class ClassAncestorSensor {
     constructor(_opts) {
         this._Bus = _opts._Bus;
         this._Pins = _opts._Pins;
-        this._Adress = _opts._Adress;
+        this._Address = _opts._Address;
         this._Repeatability = _opts._Repeatability;
     }
     /**
@@ -61,8 +61,8 @@ class ClassMiddleSensor extends ClassAncestorSensor {
      * @param {Object} _sensor_props 
      */
     constructor(_opts) {
-        // super(_opts);
-        ClassAncestorSensor.apply(this, [_opts]);
+        super(_opts);
+        // ClassAncestorSensor.apply(this, [_opts]);
         this._Values = [];
         this._RawValues = [];
         this._Channels = [];
@@ -89,12 +89,12 @@ class ClassMiddleSensor extends ClassAncestorSensor {
     /**
      * @method
      * Метод сохраняет в виде полей общие характеристики датчика (_sensor_props), инициализирует поля, геттеры и сеттеры необходимые для организации хранения и использования данных с каналов датчика.
-     * @param {_sensor_props}  
+     * @param {_sensor_props} _sensor_props 
      */
     Init(_sensor_props) {
         if (this._IsInited) return;
-        // super.Init(_sensor_props);
-        ClassAncestorSensor.prototype.Init.apply(this, [_sensor_props]);
+        super.Init(_sensor_props);
+        // ClassAncestorSensor.prototype.Init.apply(this, [_sensor_props]);
         for (let i = 0; i < this._QuantityChannel; i++) {
             try {
                 this._Channels[i] = new ClassChannel(this, i);  // инициализируем и сохраняем объекты каналов
@@ -133,24 +133,25 @@ class ClassMiddleSensor extends ClassAncestorSensor {
      * @param {Number} _ch_num номер канала 
      * @param {Number} _period период опроса в мс
      * @param {String} _mode режим
-     * @returns {Boolean}
+     * @returns {Boolean} 
      */
     Start(_ch_num, _period, _mode) { }
     /**
      * @method
      * Метод прекращает считывание значений с заданного канала. 
      * В случаях, когда значения данного канала считываются синхронно с другими, то достаточно прекратить обновление данных.
-     * @param {Number} _ch_num 
+     * @param {Number} _ch_num - номер канала, опрос которого необходимо остановить
      */
     Stop(_ch_num) { }
     /**
      * @method
      * Останавливает цикл, ответственный за опрос указанного канала и запускает его вновь с уже новой частотой. Возобновиться должно обновление всех каналов, которые опрашивались перед остановкой.  
-     * @param {Number} _ch_num 
+     * @param {Number} _ch_num - номер канала, частота опроса которого изменяется
+     * @param {Number} _period - новый вериод опроса
      */
     ChangeFrequency(_ch_num, _period) { }
     /**
-     * @typedef _config_data
+     * @typedef _config_data - объект, который в своих полях хранит конфигурационные параметры для служб, используемых каналом (зоны, лимиты, коэфы линейной функции) 
      * @property {[Number]} _OutLims - массив на 2 элемента с нижней и верхней границами вых.значений
      * @property {Number} _K - коэффициент k
      * @property {Number} _B - коэффициент b
@@ -162,7 +163,8 @@ class ClassMiddleSensor extends ClassAncestorSensor {
     /**
      * @method
      * Метод принимает объект который может хранить полями с конфигурационными значениями лимитов, коэфов функции вых значений и измерительных зон.
-     * @param {_config_data} _config_data 
+     * @param {Number} _ch_num - номер конфигурируемного канала 
+     * @param {_config_data} _config_data объект с конфигурационными параметрами
      */
     Configure(_ch_num, _config_data) {
         let channel = this.GetChannel(_ch_num); 
