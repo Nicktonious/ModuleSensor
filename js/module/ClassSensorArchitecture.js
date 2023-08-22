@@ -61,8 +61,8 @@ class ClassMiddleSensor extends ClassAncestorSensor {
      * @param {Object} _sensor_props 
      */
     constructor(_opts) {
-        super(_opts);
-        // ClassAncestorSensor.apply(this, [_opts]);
+        // super(_opts);
+        ClassAncestorSensor.apply(this, [_opts]);
         this._Values = [];
         this._RawValues = [];
         this._Channels = [];
