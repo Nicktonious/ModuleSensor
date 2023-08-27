@@ -118,13 +118,13 @@ class ClassMiddleSensor extends ClassAncestorSensor {
 
             Object.defineProperty(this, `Ch${i}_Value`, {       //определяем геттеры и сеттеры по шаблону "Ch0_Value", "Ch1_Value" ...
                 get: () => this._Values[i],                  //до введения фильтров значение хранится только в нулевой позиции
-                set: val => {
-                    this._RawValues[i][0] = val;
+                set: _val => {
+                    let val = _val;
 
                     val = this._Channels[i]._Limits.SupressOutValue(val);
                     val = this._Channels[i]._Limits.CalibrateOutValue(val);
 
-                    this._Values[i] = val;
+                    this._Values[i].push(val, _val);
                     this._Channels[i]._Alarms.CheckZones(val);
                 }
             });
