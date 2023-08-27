@@ -1,20 +1,17 @@
 /**
- * @typedef _sensor_props - объект хранящий описательные характеристики датчика
+ * @typedef _sensor_props - объект хранящий системные и описательные свойства, необходимые для инициализации и обеспечения работы датичика
+ * @property {[Pin]} _Pins
+ * @property {Bus} _Bus
+ * @property {Number} _Address
+ * @property {Number | String} _Repeatability  
  * @property {String} _Name
  * @property {String} _Type
  * @property {[String]} _ChannelNames
  * @property {String} _TypeInSignal
- * @property {String} _TypeOutSignall
+ * @property {String} _TypeOutSignal
  * @property {Number} _QuantityChannel
- * @property _BusType
+ * @property {String} _BusType
  * @property {Object} _ManufacturingData
- */
-/**
- * @typedef _opts - объект хранящий системные сущности необходимые для инициализации и обеспечения работы датичика
- * @property {[Pin]} _Pins
- * @property {Bus} _Bus
- * @property {Number} _Address
- * @property {Number | String} _Repeatability   
  */
 /**
  * @class 
@@ -23,29 +20,33 @@
  */
 class ClassAncestorSensor {
     /**
+     * @typedef _opts
+     * @property {any} _Bus
+     * @property {[Pin]} _Pins 
+     */
+    /**
      * @constructor
      * @param {_opts} _opts 
      */
-    constructor(_opts) {
+    constructor(_opts) { 
         this._Bus = _opts._Bus;
         this._Pins = _opts._Pins;
-        this._Address = _opts._Address;
-        this._Repeatability = _opts._Repeatability;
     }
     /**
      * @method
      * Метод сохраняет в виде полей общие характеристики датчика (_sensor_props)
      * @param {_sensor_props} _sensor_props 
      */
-    Init(_sensor_props) {
-        this._Name = _sensor_props._Name;
-        this._Type = _sensor_props._Type;
-        this._ChannelNames = _sensor_props._ChannelNames;
-        this._TypeInSignal = _sensor_props._TypeInSignal;
-        this._TypeOutSignal = _sensor_props._TypeOutSignal
-        // this._NumMinPortsRequired = 2; //TODO: обдумать
+    InitSensProperies(_sensor_props) {
+        if (typeof _sensor_props._QuantityChannel !== 'number' || _sensor_props._QuantityChannel < 1) throw new Error('')
         this._QuantityChannel = _sensor_props._QuantityChannel;
-        this._BusType = _sensor_props._BusType;
+    
+        ['_Name', '_Type', '_ChannelNames', '_TypeInSignal', '_TypeOutSignal', '_BusType']
+            .forEach(prop => {
+                if (typeof _sensor_props[prop] !== 'string') throw new Error('Incorrect sensor property');
+                this[prop] = _sensor_props[prop];
+            });
+        // this._NumMinPortsRequired = 2; //TODO: обдумать
         this._ManufacturingData = _sensor_props._ManufacturingData;
     }
 }
@@ -57,20 +58,21 @@ class ClassAncestorSensor {
 class ClassMiddleSensor extends ClassAncestorSensor {
     /**
      * @constructor
-     * @param {_init_object} _opts 
-     * @param {Object} _sensor_props 
+     * @param {_sensor_props} _sensor_props 
      */
-    constructor(_opts) {
+    constructor(_sensor_props) {
         // super(_opts);
-        ClassAncestorSensor.apply(this, [_opts]);
+        ClassAncestorSensor.apply(this, [_sensor_props]);
         this._Values = [];
-        this._RawValues = [];
         this._Channels = [];
-        this._IsInited = false;
+
+        this.InitSensProperies(_sensor_props);
+        this.InitChannels(this._QuantityChannel);
+        this._IsInited = true;
     }
     /**
      * @getter
-     * Возвращает количество инстанцированных объектов каналов датчика
+     * Возвращает количество инстанцированных объектов каналов датчика.
      */
     get CountChannels() {
         return this._Channels.filter(o => o instanceof ClassChannel).length;
@@ -78,7 +80,7 @@ class ClassMiddleSensor extends ClassAncestorSensor {
     /**
      * @method
      * Возвращает объект соответствующего канала если он уже был инстанцирован. Иначе возвращает null
-     * @param {Number} _num номер канала
+     * @param {Number} _num - номер канала
      * @returns {ClassChannel}
      */
     GetChannel(_num) {
@@ -88,108 +90,133 @@ class ClassMiddleSensor extends ClassAncestorSensor {
     }
     /**
      * @method
-     * Метод сохраняет в виде полей общие характеристики датчика (_sensor_props), инициализирует поля, геттеры и сеттеры необходимые для организации хранения и использования данных с каналов датчика.
-     * @param {_sensor_props} _sensor_props 
+     * Метод инициализирует поля, геттеры и сеттеры необходимые для  организации хранения и использования данных с каналов датчика.
+     * @param {Number} _channels_quantity - количество каналов в датчике
      */
-    Init(_sensor_props) {
+    InitChannels(_channels_quantity) {
         if (this._IsInited) return;
-        // super.Init(_sensor_props);
-        ClassAncestorSensor.prototype.Init.apply(this, [_sensor_props]);
-        for (let i = 0; i < this._QuantityChannel; i++) {
+        for (let i = 0; i < _channels_quantity; i++) {
             try {
                 this._Channels[i] = new ClassChannel(this, i);  // инициализируем и сохраняем объекты каналов
             } catch (e) {
                 this._Channels[i] = null;
             }
-
-            this._Values[i] = [];                               // инициализируем массив на позиции для каждого канала
-            this._RawValues[i] = [];
+            this._Values[i] = {
+                depth: 1,
+                raw: [],
+                processed: [],
+                count: 0,
+                push: function(_val, _rawVal) {
+                    if (++this.count >= this.depth) {
+                        this.raw.shift();
+                        this.processed.shift();
+                    }
+                    this.raw.push(_rawVal);
+                    this.processed.push(_val);
+                }
+            };
 
             Object.defineProperty(this, `Ch${i}_Value`, {       //определяем геттеры и сеттеры по шаблону "Ch0_Value", "Ch1_Value" ...
-                get: () => this._Values[i][0],                  //до введения фильтров значение хранится только в нулевой позиции
+                get: () => this._Values[i],                  //до введения фильтров значение хранится только в нулевой позиции
                 set: val => {
                     this._RawValues[i][0] = val;
 
                     val = this._Channels[i]._Limits.SupressOutValue(val);
                     val = this._Channels[i]._Limits.CalibrateOutValue(val);
 
-                    this._Values[i][0] = val;
+                    this._Values[i] = val;
                     this._Channels[i]._Alarms.CheckZones(val);
                 }
             });
         }
-        this._IsInited = true;
+    }
+    SetFilterDepth(_ch_num, _depth) { 
+        if (typeof _depth !== 'number' || _depth < 1) throw new Error();
+        this._RawValues[_ch_num].depth = _depth;
     }
     /**
      * @method
-     * Метод который запускает циклический опрос определенного канала датчика с заданной периодичностью в мс.  При попытке задать слишком короткий период опроса, он должен автоматически повышаться в зависимости от характеристик датичка. 
-     * 
-     * В некоторых датчиках определенные каналы не могут опрашиваться одновременно. В таких случаях эффект от повторного вызова метода   для уже другого канала должен зависеть от параметра _mode:
-     * 
-     *      "force" - опрос конфликтующих каналов прекращается и запускается новый опрос заданного канала.
-     *      "multy" - прекращается предыдущий и запускается новый опрос с частотой, которая позволит считывать данные со всех заданных каналов.
-     *      "default" - при существовании конфликтных опросов ничего не делает и возвращает false
-     * 
-     * @param {Number} _ch_num номер канала 
-     * @param {Number} _period период опроса в мс
-     * @param {String} _mode режим
-     * @returns {Boolean} 
+     * Метод обязывающий провести инициализацию датчика настраивая необходимые регистры 
+     * @param {Object} _opts 
      */
-    Start(_ch_num, _period, _mode) { }
+    Init(_opts) { }
     /**
      * @method
-     * Метод прекращает считывание значений с заданного канала. 
-     * В случаях, когда значения данного канала считываются синхронно с другими, то достаточно прекратить обновление данных.
+     * Метод обязывает запустить циклический опрос определенного канала датчика с заданной периодичностью в мс. Переданное значение периода должно сверяться с минимальным значением для данного канала и, если требуется, регулироваться, так как максимальная частота опроса зависит от характеристик датичка. 
+     * 
+     * В некоторых датчиках считывание значений с нескольких каналов происходит неразрывно и одновременно. В таких случаях ведется только один циклический опрос, а повторный вызов метода Start() для конкретного канала лишь определяет, будет ли в процессе опроса обновляться значение данного канала.
+     * 
+     * Для тех датчиков, каналы которых не могут опрашиваться одновременно, реализация разных реакций на повторный вызов метода выполняется с помощью параметра _opts
+     * 
+     * @param {Number} _ch_num - номер канала 
+     * @param {Number} _period - период опроса в мс
+     * @param {Object} [_opts] - необязательный параметр, позволяющий передать дополнительные инструкции
+     * @returns {Boolean} 
+     */
+    Start(_ch_num, _period, _opts) { }
+    /**
+     * @method
+     * Метод обязывает прекратить считывание значений с заданного канала. 
+     * В случаях, когда значения данного канала считываются синхронно с другими, достаточно прекратить обновление данных.
      * @param {Number} _ch_num - номер канала, опрос которого необходимо остановить
      */
     Stop(_ch_num) { }
     /**
      * @method
-     * Останавливает цикл, ответственный за опрос указанного канала и запускает его вновь с уже новой частотой. Возобновиться должно обновление всех каналов, которые опрашивались перед остановкой.  
+     * Метод обязывает останавливить опрос указанного канала и запустить его вновь с уже новой частотой. Возобновиться должно обновление всех каналов, которые опрашивались перед остановкой.  
      * @param {Number} _ch_num - номер канала, частота опроса которого изменяется
      * @param {Number} _period - новый вериод опроса
      */
     ChangeFrequency(_ch_num, _period) { }
     /**
-     * @typedef _config_data - объект, который в своих полях хранит конфигурационные параметры для служб, используемых каналом (зоны, лимиты, коэфы линейной функции) 
-     * @property {[Number]} _OutLims - массив на 2 элемента с нижней и верхней границами вых.значений
-     * @property {Number} _K - коэффициент k
-     * @property {Number} _B - коэффициент b
-     * @property {Function} _GreenZone - список аргуметов для инициализации зеленой зоны
-     * @property {[Number | Function]} _YellowZone - список аргуметов для инициализации желтой зоны
-     * @property {[Number | Function]} _RedZone - список аргуметов для инициализации красной зоны
-     * 
-     */
-    /**
      * @method
-     * Метод принимает объект который может хранить полями с конфигурационными значениями лимитов, коэфов функции вых значений и измерительных зон.
+     * Метод обязывающий выполнить конфигурацию датчика либо значениями по умолчанию, либо согласно параметру _opts 
      * @param {Number} _ch_num - номер конфигурируемного канала 
-     * @param {_config_data} _config_data объект с конфигурационными параметрами
+     * @param {Object} _opts - объект с конфигурационными параметрами
      */
-    Configure(_ch_num, _config_data) {
-        let channel = this.GetChannel(_ch_num); 
-        if (_config_data._OutLims)
-            channel._Limits.SetOutLim(_config_data._OutLims[0], _config_data._OutLims[1]);
-        if (_config_data._K || _config_data._B)
-            channel._Limits.SetTransmissionOut(_config_data._K, _config_data._B);
-        if (_config_data._GreenZone)
-            channel._Alarms.SetGreenZone.apply(this, _config_data._GreenZone);
-        if (_config_data._YellowZone)
-            channel._Alarms.SetYellowZone.apply(this, _config_data._YellowZone);
-        if (_config_data._RedZone)
-            channel._Alarms.SetRedZone.apply(this, _config_data._RedZone);
-    }
+    Configure(_ch_num, _opts) { }
     /**
      * @method
-     * Выполняет перезагрузку датчика
+     * Метод обязывающий выполнить перезагрузку датчика
      */
     Reset() { }
     /**
-     * @method
-     * Метод который запускает цепь вызовов для начала прикладной работы датчика.
+     * Метод устанавливающий значение адреса устройства
+     * @param {Number} _addr - адрес
      */
-    Run() { }
-
+    SetAddress(_addr) { }
+    /**
+     * @method
+     * Метод устанавливающий значение повторяемости
+     * @param {Number | String} _rep - повторяемость
+     */
+    SetRepeatability(_rep) { }
+    /**
+     * @method
+     * Метод устанавливающий точность измерений
+     * @param {Number | String} _pres - точность
+     */
+    SetPrecision(_pres) { }
+    /**
+     * @method
+     * Метод который обязывает запустить прикладную работу датчика, сперва выполнив его полную инициализацию, конфигурацию и прочие необходимые процедуры, обеспечив его безопасный и корректный запуск
+     * @param {Number} _ch_num - номер канала
+     * @param {Object} _opts - параметры для запуска
+     */
+    Run(_ch_num, _opts) { }
+    /**
+     * @method
+     * Метод обеспечивающий чтение с регистра
+     * @param {Number} _reg 
+     */
+    Read(_reg) { }
+    /**
+     * @method
+     * Метод обеспечивающий запись в регистр
+     * @param {Number} _reg 
+     * @param {Number} _val 
+     */
+    Write(_reg, _val) { }
 }
 /**
  * @class
@@ -210,6 +237,12 @@ class ClassChannel {
         this._Alarms = new ClassAlarms();
         sensor._Channels[num] = this;
     }
+    /**
+     * @method
+     * Метод обязывающий провести инициализацию датчика настраивая необходимые регистры 
+     * @param {Object} _opts 
+     */
+    Init(_opts) { }
     // /**
     //  * @method
     //  * Метод сохраняет в виде полей общие характеристики датчика (_sensor_props), инициализирует поля, геттеры и сеттеры необходимые для организации хранения и использования данных с каналов датчика.
@@ -221,19 +254,19 @@ class ClassChannel {
     // }
     /**
      * @method
-     * Метод который запускает циклический опрос определенного канала датчика с заданной периодичностью в мс.  При попытке задать слишком короткий период опроса, он должен автоматически повышаться в зависимости от характеристик датичка. 
+     * Метод обязывает запустить циклический опрос определенного канала датчика с заданной периодичностью в мс. Переданное значение периода должно сверяться с минимальным значением для данного канала и, если требуется, регулироваться, так как максимальная частота опроса зависит от характеристик датичка. 
      * 
-     * В некоторых датчиках определенные каналы не могут опрашиваться одновременно. В таких случаях эффект от повторного вызова метода   для уже другого канала должен зависеть от параметра _mode:
+     * В некоторых датчиках считывание значений с нескольких каналов происходит неразрывно и одновременно. В таких случаях ведется только один циклический опрос, а повторный вызов метода Start() для конкретного канала лишь определяет, будет ли в процессе опроса обновляться значение данного канала.
      * 
-     *      "force" - опрос конфликтующих каналов прекращается и запускается новый опрос заданного канала.
-     *      "multy" - прекращается предыдущий и запускается новый опрос с частотой, которая позволит считывать данные со всех заданных каналов.
-     *      "default" - при существовании конфликтных опросов ничего не делает и возвращает false
+     * Для тех датчиков, каналы которых не могут опрашиваться одновременно, реализация разных реакций на повторный вызов метода выполняется с помощью параметра _opts
      * 
-     * @param {Number} _period 
-     * @param {String} _mode 
+     * @param {Number} _ch_num - номер канала 
+     * @param {Number} _period - период опроса в мс
+     * @param {Object} [_opts] - необязательный параметр, позволяющий передать дополнительные инструкции
+     * @returns {Boolean} 
      */
-    Start(_period, _mode) {
-        return this._ThisSensor.Start(this._NumChannel, _period, _mode || 'default');
+    Start(_period, _opts) {
+        return this._ThisSensor.Start(this._NumChannel, _period, {});
     }
     /**
      * @method
@@ -256,17 +289,19 @@ class ClassChannel {
     Reset() { return this._ThisSensor.Reset(Array.from(arguments)); }
     /**
      * @method
-     * Метод который запускает цепь вызовов для начала прикладной работы датчика.
+     * Метод который обязывает запустить прикладную работу датчика, сперва выполнив его полную инициализацию, конфигурацию и прочие необходимые процедуры, обеспечив его безопасный и корректный запуск
+     * @param {Object} _opts - параметры для запуска
      */
-    Run() { return this._ThisSensor.Run(Array.from(arguments)); }
+    Run(_opts) { return this._ThisSensor.Run(this._NumChannel, _opts); }
     /**
      * @method
-     * Метод принимает объект который может хранить полями с конфигурационными значениями лимитов, коэфов функции вых значений и измерительных зон.
-     * @param {_config_data} _config_data 
+     * Метод обязывающий выполнить конфигурацию датчика либо значениями по умолчанию, либо согласно параметру _opts 
+     * @param {Object} _opts - объект с конфигурационными параметрами
      */
-    Configure(_config_data) { 
-        return this._ThisSensor.Configure(this._NumChannel, _config_data);
+    Configure(_opts) {
+        return this._ThisSensor.Configure(this._NumChannel, _opts);
     }
+    
     /**
      * @getter
      * Возвращает значение канала, хранящееся в основном объекте
@@ -322,7 +357,7 @@ class ClassLimits {
         if (typeof _k !== 'number' || typeof _b !== 'number') throw new Error();
         this._K = _k;
         this._B = _b;
-    }
+    } 
     /**
      * @method
      * возвращает значение, прошедшее через коэффициенты функции вых.значений
