@@ -1,53 +1,65 @@
 /**
- * @typedef _sensor_props - объект хранящий системные и описательные свойства, необходимые для инициализации и обеспечения работы датичика
- * @property {[Pin]} _Pins
- * @property {Bus} _Bus
- * @property {Number} _Address
- * @property {Number | String} _Repeatability  
- * @property {String} _Name
- * @property {String} _Type
- * @property {[String]} _ChannelNames
- * @property {String} _TypeInSignal
- * @property {String} _TypeOutSignal
- * @property {Number} _QuantityChannel
- * @property {String} _BusType
- * @property {Object} _ManufacturingData
+ * @typedef SensorPropsType - объект хранящий описательные характеристики датчика
+ * @property {String} name
+ * @property {String} type
+ * @property {[String]} channelNames
+ * @property {String} typeInSignal
+ * @property {String} typeOutSignal
+ * @property {String} busType
+ * @property {Object} manufacturingData
  */
 /**
  * @class 
  * Самый "старший" предок в иерархии классов датчиков. 
- * В первую очередь собирает в себе самые базовые данные о датчике: переданные шину, пины, адрес, повторяемость и тд. Так же сохраняет его описательную характеристику: имя, тип вх. и вых. сигналов, типы шин которые можно использовать, количество каналов и тд.
+ * В первую очередь собирает в себе самые базовые данные о датчике: переданные шину, пины и тд. Так же сохраняет его описательную характеристику: имя, тип вх. и вых. сигналов, типы шин которые можно использовать, количество каналов и тд.
  */
 class ClassAncestorSensor {
     /**
-     * @typedef _opts
-     * @property {any} _Bus
-     * @property {[Pin]} _Pins 
+     * @typedef SensorOptsType
+     * @property {any} bus - шина
+     * @property {[Pin]} pins - массив пинов
+     * @property {Number} quantityChannel - количество каналов датчика 
      */
     /**
      * @constructor
-     * @param {_opts} _opts 
+     * @param {SensorOptsType} _opts - объект который содержит минимальный набор параметров, необхходимых для обеспечения работы датчика
+     * @param {SensorPropsType} [_sensor_props] - объект с описательными характеристиками датчика, который передается в метод InitSensProperties
      */
-    constructor(_opts) { 
-        this._Bus = _opts._Bus;
-        this._Pins = _opts._Pins;
+    constructor(_opts, _sensor_props) { 
+        if (!_opts.bus instanceof I2C) throw new Error('Not an I2C bus');
+        _opts.pins.forEach(pin => {
+            if (!(+Pin(pin))) throw new Error('Not a pin');
+        });
+        if (typeof _opts.quantityChannel !== 'number' || _opts.quantityChannel < 1) throw new Error('Invalid QuantityChannel arg ');
+
+        this._Bus = _opts.bus;
+        this._Pins = _opts.pins;
+        this._QuantityChannel = _opts.quantityChannel;
+
+        if (_sensor_props) this.InitSensProperties(_sensor_props);
     }
     /**
      * @method
      * Метод сохраняет в виде полей общие характеристики датчика (_sensor_props)
-     * @param {_sensor_props} _sensor_props 
+     * @param {SensorPropsType} sensor_props 
      */
-    InitSensProperies(_sensor_props) {
-        if (typeof _sensor_props._QuantityChannel !== 'number' || _sensor_props._QuantityChannel < 1) throw new Error('')
-        this._QuantityChannel = _sensor_props._QuantityChannel;
-    
-        ['_Name', '_Type', '_ChannelNames', '_TypeInSignal', '_TypeOutSignal', '_BusType']
-            .forEach(prop => {
-                if (typeof _sensor_props[prop] !== 'string') throw new Error('Incorrect sensor property');
-                this[prop] = _sensor_props[prop];
+    InitSensProperties(sensor_props) {  
+        const changeNotation = str => `_${str[0].toUpperCase()}${str.substr(1)}`;       //converts "propName" -> "_PropName"
+        ['name', 'type', 'typeInSignal', 'typeOutSignal'].forEach(prop => {
+            if (typeof sensor_props[prop] !== 'string') throw new Error('Incorrect sensor property');
+            
+            this[changeNotation(prop)] = sensor_props[prop];
+        });
+        
+        ['channelNames', 'busType'].forEach(propArr => {
+            sensor_props[propArr].forEach(strElem => {
+                if (typeof strElem !== 'string') throw new Error('Incorrect sensor property');
+                this[changeNotation(propArr)] = sensor_props[propArr];
             });
-        // this._NumMinPortsRequired = 2; //TODO: обдумать
-        this._ManufacturingData = _sensor_props._ManufacturingData;
+        });
+
+        this._ManufacturingData = sensor_props.manufacturingData;
+        this._ArePropsInited = true;
     }
 }
 /**
@@ -58,16 +70,15 @@ class ClassAncestorSensor {
 class ClassMiddleSensor extends ClassAncestorSensor {
     /**
      * @constructor
-     * @param {_sensor_props} _sensor_props 
+     * @param {SensorOptsType} _opts
+     * @param {SensorPropsType} [_sensor_props] 
      */
-    constructor(_sensor_props) {
-        // super(_opts);
-        ClassAncestorSensor.apply(this, [_sensor_props]);
+    constructor(_opts, _sensor_props) {
+        ClassAncestorSensor.apply(this, [_opts, _sensor_props]);
         this._Values = [];
         this._Channels = [];
 
-        this.InitSensProperies(_sensor_props);
-        this.InitChannels(this._QuantityChannel);
+        this.InitChannels();
         this._IsInited = true;
     }
     /**
@@ -91,36 +102,20 @@ class ClassMiddleSensor extends ClassAncestorSensor {
     /**
      * @method
      * Метод инициализирует поля, геттеры и сеттеры необходимые для  организации хранения и использования данных с каналов датчика.
-     * @param {Number} _channels_quantity - количество каналов в датчике
      */
-    InitChannels(_channels_quantity) {
+    InitChannels() {
         if (this._IsInited) return;
-        for (let i = 0; i < _channels_quantity; i++) {
-            try {
-                this._Channels[i] = new ClassChannel(this, i);  // инициализируем и сохраняем объекты каналов
-            } catch (e) {
-                this._Channels[i] = null;
-            }
-            this._Values[i] = {
-                depth: 1,
-                raw: [],
-                processed: [],
-                count: 0,
-                push: function(_val, _rawVal) {
-                    if (++this.count >= this.depth) {
-                        this.raw.shift();
-                        this.processed.shift();
-                    }
-                    this.raw.push(_rawVal);
-                    this.processed.push(_val);
-                }
-            };
-
+        /**
+         * Примечание! Объявление аксессоров инкапсулируется внутрь функции, так как еще на espruino версии 2.13 область видимости локальных переменных действует не совсем так как в node js, 
+         * в связи с чем в блоке кода под Object.defineProperty(... значение i не остается константным и изменение i в теле/условии цикла ломает логику в коде аксессора 
+         */
+        const defineAccessors = i => {
             Object.defineProperty(this, `Ch${i}_Value`, {       //определяем геттеры и сеттеры по шаблону "Ch0_Value", "Ch1_Value" ...
-                get: () => this._Values[i],                  //до введения фильтров значение хранится только в нулевой позиции
+                get: () => {
+                    return this._Values[i]._arr[this._Values[i]._arr.length-1];
+                },
                 set: _val => {
                     let val = _val;
-
                     val = this._Channels[i]._Limits.SupressOutValue(val);
                     val = this._Channels[i]._Limits.CalibrateOutValue(val);
 
@@ -129,15 +124,59 @@ class ClassMiddleSensor extends ClassAncestorSensor {
                 }
             });
         }
+        const defineAvgAccessor = i => {
+            Object.defineProperty(this, `Ch${i}_ValueAvg`, {       //определяем геттеры и сеттеры по шаблону "Ch0_Value", "Ch1_Value" ...
+                get: () => {
+                    return this._Values[i]._arr.reduce((pr, cur) => pr + cur, 0) / this._Values[i]._arr.length;
+                }
+            });
+        }
+        for (let i = 0; i < this._QuantityChannel; i++) {
+            try {
+                this._Channels[i] = new ClassChannel(this, i);  // инициализируем и сохраняем объекты каналов
+            } catch (e) {
+                this._Channels[i] = null;
+            }
+            this._Values[i] = {
+                _depth : 1,
+                _rawArr : [],
+                _arr : [],
+            
+                setDepth: function(d) {
+                    this._depth = d;
+                    while (this._arr.length > this._depth) {
+                        this._rawArr.shift();
+                        this._arr.shift();
+                    }
+                },
+                push: function(_val, _rawVal) {
+                    while (this._arr.length >= this._depth) {
+                        this._rawArr.shift();
+                        this._arr.shift();
+                    }
+                    this._rawArr.push(_rawVal);
+                    this._arr.push(_val);
+                }
+            };
+            defineAccessors(i);
+            defineAvgAccessor(i);
+        }
     }
+    /**
+     * @method 
+     * Метод который устанавливает глубину фильтруемых значений - изменяет количество значений, хранящихся в кольцнвом буффере (_Values[i]) в момент времени.
+     * @param {Number} _ch_num 
+     * @param {Number} _depth 
+     */
     SetFilterDepth(_ch_num, _depth) { 
-        if (typeof _depth !== 'number' || _depth < 1) throw new Error();
-        this._RawValues[_ch_num].depth = _depth;
+        if (_ch_num < 0 || _ch_num >= this._QuantityChannel || _depth < 1) throw new Error('Invalid args');
+        this._Values[_ch_num].setDepth(_depth);
+        return true;
     }
     /**
      * @method
-     * Метод обязывающий провести инициализацию датчика настраивая необходимые регистры 
-     * @param {Object} _opts 
+     * Метод обязывающий провести инициализацию датчика настройкой необходимых для его работы регистров 
+     * @param {Object} [_opts] 
      */
     Init(_opts) { }
     /**
@@ -150,7 +189,7 @@ class ClassMiddleSensor extends ClassAncestorSensor {
      * 
      * @param {Number} _ch_num - номер канала 
      * @param {Number} _period - период опроса в мс
-     * @param {Object} [_opts] - необязательный параметр, позволяющий передать дополнительные инструкции
+     * @param {Object} [_opts] - необязательный параметр, позволяющий передать дополнительные аргументы
      * @returns {Boolean} 
      */
     Start(_ch_num, _period, _opts) { }
@@ -170,11 +209,10 @@ class ClassMiddleSensor extends ClassAncestorSensor {
     ChangeFrequency(_ch_num, _period) { }
     /**
      * @method
-     * Метод обязывающий выполнить конфигурацию датчика либо значениями по умолчанию, либо согласно параметру _opts 
-     * @param {Number} _ch_num - номер конфигурируемного канала 
-     * @param {Object} _opts - объект с конфигурационными параметрами
+     * Метод обязывающий выполнить дополнительную конфигурацию датчика. Это может быть настройка пина прерывания, периодов измерения и прочих шагов, которые в общем случае необходимы для работы датчика, но могут переопределяться в процессе работы, и потому вынесены из метода Init() 
+     * @param {Object} [_opts] - объект с конфигурационными параметрами
      */
-    Configure(_ch_num, _opts) { }
+    ConfigureRegs(_opts) { }
     /**
      * @method
      * Метод обязывающий выполнить перезагрузку датчика
@@ -225,8 +263,8 @@ class ClassMiddleSensor extends ClassAncestorSensor {
 class ClassChannel {
     /**
      * @constructor
-     * @param {ClassMiddleSensor} sensor 
-     * @param {Number} num 
+     * @param {ClassMiddleSensor} sensor - ссылка на основной объект датчика
+     * @param {Number} num - номер канала
      */
     constructor(sensor, num) {
         if (sensor._Channels[num] instanceof ClassChannel) return sensor._Channels[num];    //если объект данного канала однажды уже был иницииализирован, то вернется ссылка, хранящаяся в объекте физического сенсора  
@@ -237,21 +275,6 @@ class ClassChannel {
         this._Alarms = new ClassAlarms();
         sensor._Channels[num] = this;
     }
-    /**
-     * @method
-     * Метод обязывающий провести инициализацию датчика настраивая необходимые регистры 
-     * @param {Object} _opts 
-     */
-    Init(_opts) { }
-    // /**
-    //  * @method
-    //  * Метод сохраняет в виде полей общие характеристики датчика (_sensor_props), инициализирует поля, геттеры и сеттеры необходимые для организации хранения и использования данных с каналов датчика.
-    //  * @param {_sensor_props} _sensor_props 
-    //  * @returns 
-    //  */
-    // Init(_sensor_props) {
-    //     return this.ThisSensor.Init();
-    // }
     /**
      * @method
      * Метод обязывает запустить циклический опрос определенного канала датчика с заданной периодичностью в мс. Переданное значение периода должно сверяться с минимальным значением для данного канала и, если требуется, регулироваться, так как максимальная частота опроса зависит от характеристик датичка. 
@@ -266,40 +289,50 @@ class ClassChannel {
      * @returns {Boolean} 
      */
     Start(_period, _opts) {
-        return this._ThisSensor.Start(this._NumChannel, _period, {});
+        return this._ThisSensor.Start(this._NumChannel, _period, _opts);
     }
     /**
      * @method
      * Метод прекращает считывание значений с заданного канала. 
      * В случаях, когда значения данного канала считываются синхронно с другими, то достаточно прекратить обновление данных.
      */
-    Stop() { 
-        return this._ThisSensor.Stop(this._NumChannel); 
-    }
+    Stop() { return this._ThisSensor.Stop(this._NumChannel); }
     /**
      * @method
      * Останавивает цикл, ответственный за опрос указанного канала и запускает его вновь с уже новой частотой. Возобновиться должно обновление всех каналов, которые опрашивались перед остановкой.  
-     * @param {Number} _ch_num 
+     * @param {Number} _period 
      */
-    ChangeFrequency(_ch_num, _period) { }
+    ChangeFrequency(_period) { return this._ThisSensor.ChangeFrequency.call(this._ThisSensor, Array.from(arguments)); }
     /**
      * @method
      * Выполняет перезагрузку датчика
      */
-    Reset() { return this._ThisSensor.Reset(Array.from(arguments)); }
+    Reset() { return this._ThisSensor.Reset.apply(this._ThisSensor, Array.from(arguments)); }
     /**
      * @method
-     * Метод который обязывает запустить прикладную работу датчика, сперва выполнив его полную инициализацию, конфигурацию и прочие необходимые процедуры, обеспечив его безопасный и корректный запуск
+     * Метод который устанавливает глубину фильтруемых значений
+     * @param {Number} _depth 
+    */
+    SetFilterDepth(_depth) {
+        return this._ThisSensor.SetFilterDepth(this._NumChannel, _depth);
+    }
+    /**
+     * @method
+     * Метод который обязывает начать прикладную работу датчика, сперва выполнив его полную инициализацию, конфигурацию и прочие необходимые процедуры, обеспечив его безопасный и корректный запуск
      * @param {Object} _opts - параметры для запуска
      */
-    Run(_opts) { return this._ThisSensor.Run(this._NumChannel, _opts); }
+    Run(_opts) { 
+        const args = Array.from(arguments);
+        args.unshift(this._NumChannel);
+        return this._ThisSensor.Run.apply(this._ThisSensor, args);
+    }
     /**
      * @method
      * Метод обязывающий выполнить конфигурацию датчика либо значениями по умолчанию, либо согласно параметру _opts 
      * @param {Object} _opts - объект с конфигурационными параметрами
      */
-    Configure(_opts) {
-        return this._ThisSensor.Configure(this._NumChannel, _opts);
+    ConfigureRegs(_opts) {
+        return this._ThisSensor.ConfigureRegs.apply(this._ThisSensor, Array.from(arguments));
     }
     
     /**
@@ -307,6 +340,11 @@ class ClassChannel {
      * Возвращает значение канала, хранящееся в основном объекте
      */
     get Value() { return this._ThisSensor[`Ch${this._NumChannel}_Value`]; }  //вых значение канала
+    /**
+     * @getter
+     * Возвращает устредненное значение канала по последним хранящимся измерениям
+     */
+    get ValueAvg() { return this._ThisSensor[`Ch${this._NumChannel}_ValueAvg`]; }
     /**
      * @getter
      * Возвращает уникальный идентификатор канала
@@ -343,9 +381,7 @@ class ClassLimits {
      * @returns {Number}
      */
     SupressOutValue(val) {
-        return val < this._Limits[0] ? this._Limits[0]
-             : val > this._Limits[1] ? this._Limits[1]
-             : val;
+        return E.clip(val, this._Limits[0], this._Limits[1]);
     }
     /**
      * @method
@@ -430,7 +466,7 @@ class ClassAlarms {
      * @param {Function} _callback 
      */
     SetGreenZone(_callback) {
-        if (typeof _callback !== 'function') throw new Error();
+        if (typeof _callback !== 'function') throw new Error('Argument is not a function');
         this._Zones.green = { invoke: _callback };
     }
     /**
