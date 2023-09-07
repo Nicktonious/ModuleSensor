@@ -114,23 +114,17 @@ class ClassMiddleSensor extends ClassAncestorSensor {
                 get: () => {
                     return this._Values[i]._arr[this._Values[i]._arr.length-1];
                 },
-                set: _val => {
-                    let val = _val;
+                set: val => {
+                    this._Values[i]._rawVal = val;
                     val = this._Channels[i]._Limits.SupressOutValue(val);
                     val = this._Channels[i]._Limits.CalibrateOutValue(val);
 
-                    this._Values[i].push(val, _val);
+                    this._Values[i].push(val);
                     this._Channels[i]._Alarms.CheckZones(val);
                 }
             });
         }
-        const defineAvgAccessor = i => {
-            Object.defineProperty(this, `Ch${i}_ValueAvg`, {       //определяем геттеры и сеттеры по шаблону "Ch0_Value", "Ch1_Value" ...
-                get: () => {
-                    return this._Values[i]._arr.reduce((pr, cur) => pr + cur, 0) / this._Values[i]._arr.length;
-                }
-            });
-        }
+
         for (let i = 0; i < this._QuantityChannel; i++) {
             try {
                 this._Channels[i] = new ClassChannel(this, i);  // инициализируем и сохраняем объекты каналов
@@ -139,27 +133,17 @@ class ClassMiddleSensor extends ClassAncestorSensor {
             }
             this._Values[i] = {
                 _depth : 1,
-                _rawArr : [],
+                _rawVal : undefined,
                 _arr : [],
             
-                setDepth: function(d) {
-                    this._depth = d;
-                    while (this._arr.length > this._depth) {
-                        this._rawArr.shift();
-                        this._arr.shift();
-                    }
-                },
-                push: function(_val, _rawVal) {
+                push: function(_val) {
                     while (this._arr.length >= this._depth) {
-                        this._rawArr.shift();
                         this._arr.shift();
                     }
-                    this._rawArr.push(_rawVal);
                     this._arr.push(_val);
                 }
             };
             defineAccessors(i);
-            defineAvgAccessor(i);
         }
     }
     /**
@@ -170,7 +154,7 @@ class ClassMiddleSensor extends ClassAncestorSensor {
      */
     SetFilterDepth(_ch_num, _depth) { 
         if (_ch_num < 0 || _ch_num >= this._QuantityChannel || _depth < 1) throw new Error('Invalid args');
-        this._Values[_ch_num].setDepth(_depth);
+        this._Values[_ch_num]._depth = _depth;
         return true;
     }
     /**
@@ -218,11 +202,6 @@ class ClassMiddleSensor extends ClassAncestorSensor {
      * Метод обязывающий выполнить перезагрузку датчика
      */
     Reset() { }
-    /**
-     * Метод устанавливающий значение адреса устройства
-     * @param {Number} _addr - адрес
-     */
-    SetAddress(_addr) { }
     /**
      * @method
      * Метод устанавливающий значение повторяемости
@@ -342,11 +321,6 @@ class ClassChannel {
     get Value() { return this._ThisSensor[`Ch${this._NumChannel}_Value`]; }  //вых значение канала
     /**
      * @getter
-     * Возвращает устредненное значение канала по последним хранящимся измерениям
-     */
-    get ValueAvg() { return this._ThisSensor[`Ch${this._NumChannel}_ValueAvg`]; }
-    /**
-     * @getter
      * Возвращает уникальный идентификатор канала
      */
     get ID() { return this._ThisSensor._Name + this._NumChannel; }
@@ -416,8 +390,8 @@ class ClassAlarms {
         this._ZoneType = (low, high, cb_low, cb_high) => ({
             low: low,
             high: high,
-            callbackLow: cb_low || (function (x) { }),
-            callbackHigh: cb_high || cb_low || (function (x) { }),
+            callbackLow: cb_low,
+            callbackHigh: cb_high || cb_low,
             is: function (val) {       //проверка на то, принадлежит ли числовое значение зоне аларма 
                 return val >= this.high || val < this.low;
             },
