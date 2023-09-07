@@ -157,6 +157,10 @@ class ClassMiddleSensor extends ClassAncestorSensor {
         this._Values[_ch_num]._depth = _depth;
         return true;
     }
+    SetZones(_ch_num, _opts) {
+        if (_ch_num < 0 || _ch_num >= this._QuantityChannel || typeof _opts !== 'object') throw new Error('Invalid args');
+        return this._Channels[_ch_num].SetZones(_opts);
+    }
     /**
      * @method
      * Метод обязывающий провести инициализацию датчика настройкой необходимых для его работы регистров 
@@ -312,6 +316,9 @@ class ClassChannel {
      */
     ConfigureRegs(_opts) {
         return this._ThisSensor.ConfigureRegs.apply(this._ThisSensor, Array.from(arguments));
+    }
+    SetZones(_opts) {
+        return this._Alarms.SetZones(_opts);
     }
     
     /**
