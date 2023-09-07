@@ -37,6 +37,7 @@ class ClassAncestorSensor {
         this._Pins = _opts.pins;
         this._QuantityChannel = _opts.quantityChannel;
 
+        if (_opts.address) this._Address = _opts.adress;
         if (_sensor_props) this.InitSensProperties(_sensor_props);
     }
     /**
