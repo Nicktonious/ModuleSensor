@@ -1,3 +1,4 @@
+const indexes = { redLow: 0, yelLow: 1, green: 2, yelHigh: 3, redHigh: 4 };
 /**
  * @typedef SensorPropsType - объект хранящий описательные характеристики датчика
  * @property {String} name
