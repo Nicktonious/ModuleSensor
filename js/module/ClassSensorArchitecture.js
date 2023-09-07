@@ -394,11 +394,11 @@ class ClassLimits {
  * Границы желтой и красной зон определяются вручную, а диапазон зеленой зоны фактически подстраивается под желтую (или красную если желтая не определена).
  * 
  */
-class Alarms {
+class ClassAlarms {
     constructor() {
         this._Zones = [];
         this._Callbacks = [];
-        this._CurrZone = '';
+        this._CurrZone = 'green';
     }
     /**
      * @param {Object} opts 
