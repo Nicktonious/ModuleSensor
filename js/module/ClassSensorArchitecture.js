@@ -1,3 +1,4 @@
+const indexes = { redLow: 0, yelLow: 1, green: 2, yelHigh: 3, redHigh: 4 };
 /**
  * @typedef SensorPropsType - объект хранящий описательные характеристики датчика
  * @property {String} name
@@ -36,6 +37,7 @@ class ClassAncestorSensor {
         this._Pins = _opts.pins;
         this._QuantityChannel = _opts.quantityChannel;
 
+        if (_opts.address) this._Address = _opts.adress;
         if (_sensor_props) this.InitSensProperties(_sensor_props);
     }
     /**
@@ -120,7 +122,7 @@ class ClassMiddleSensor extends ClassAncestorSensor {
                     val = this._Channels[i]._Limits.CalibrateOutValue(val);
 
                     this._Values[i].push(val);
-                    this._Channels[i]._Alarms.CheckZones(val);
+                    this._Channels[i]._Alarms.CheckZone(val);
                 }
             });
         }
@@ -156,6 +158,17 @@ class ClassMiddleSensor extends ClassAncestorSensor {
         if (_ch_num < 0 || _ch_num >= this._QuantityChannel || _depth < 1) throw new Error('Invalid args');
         this._Values[_ch_num]._depth = _depth;
         return true;
+    }
+    /**
+     * @method
+     * Метод устанавливает значениязон измерения и их колбэков
+     * @param {Number} _ch_num 
+     * @param {Object} _opts 
+     * @returns 
+     */
+    SetZones(_ch_num, _opts) {
+        if (_ch_num < 0 || _ch_num >= this._QuantityChannel || typeof _opts !== 'object') throw new Error('Invalid args');
+        return this._Channels[_ch_num].SetZones(_opts);
     }
     /**
      * @method
@@ -313,6 +326,9 @@ class ClassChannel {
     ConfigureRegs(_opts) {
         return this._ThisSensor.ConfigureRegs.apply(this._ThisSensor, Array.from(arguments));
     }
+    SetZones(_opts) {
+        return this._Alarms.SetZones(_opts);
+    }
     
     /**
      * @getter
@@ -387,74 +403,52 @@ class ClassLimits {
  */
 class ClassAlarms {
     constructor() {
-        this._ZoneType = (low, high, cb_low, cb_high) => ({
-            low: low,
-            high: high,
-            callbackLow: cb_low,
-            callbackHigh: cb_high || cb_low,
-            is: function (val) {       //проверка на то, принадлежит ли числовое значение зоне аларма 
-                return val >= this.high || val < this.low;
-            },
-            invoke: function (val) {
-                if (val >= this.high) this.callbackHigh(val);
-                else this.callbackLow(val)
-            }
+        this._Zones = [];
+        this._Callbacks = [];
+        this._CurrZone = 'green';
+    }
+    /**
+     * @param {Object} opts 
+     */
+    SetZones(opts) {
+        const checkParams = {   // объект в котором каждой задаваемой зоне соответсвует функция, которая возвращает true если параметры, зад зоны валидны
+            green: () => (typeof opts.green.cb === 'function'),
+            yellow: () => (opts.yellow.low < opts.yellow.high),
+            red: () => (opts.red.low < opts.red.high)
+        };
+        ['red', 'yellow', 'green'].filter(zoneName => opts[zoneName]).forEach(zoneName => {
+            if (!checkParams[zoneName]) throw new Error();
         });
-        this._Zones = { red: this._ZoneType(), yellow: this._ZoneType(), green: { invoke: x => x } };
 
-        this._CurrentZone = 'green';     //'red' 'yellow' 'green'
+        if (opts.yellow) {
+            if (opts.yellow.low < this._Zones[indexes.redLow] || opts.yellow.high > this._Zones[indexes.redHigh]) throw new Error();
+            this._Zones[indexes.yelLow] = opts.yellow.low;
+            this._Zones[indexes.yelHigh] = opts.yellow.high;
+            this._Callbacks[indexes.yelLow] = opts.yellow.cbLow;
+            this._Callbacks[indexes.yelHigh] = opts.yellow.cbHigh || opts.yellow.cbLow;
+        }
+        if (opts.red) {
+            if (opts.red.low > this._Zones[indexes.yelLow] || opts.red.high < this._Zones[indexes.yelHigh]) throw new Error();
+            this._Zones[indexes.redLow] = opts.red.low;
+            this._Zones[indexes.redHigh] = opts.yellow.high;
+            this._Callbacks[indexes.redLow] = opts.red.cbLow;
+            this._Callbacks[indexes.redHigh] = opts.red.cbHigh || opts.red.cbLow;
+        }
+        if (opts.green) {
+            this._Callbacks[indexes.green] = opts.green.cb;
+        }
     }
-
-    /**
-     * @method
-     * Метод устанавливает границы и колбэки нижней и верхней желтой зоны. Если передается только один колбэк, то он будет вызыываться в обоих случаях
-     * @param {Number} _low 
-     * @param {Number} _high 
-     * @param {Function} _callbackLow колбэк нижней желтой зоны
-     * @param {Function} _callbackHigh колбэк верхней желтой зоны
-     */
-    SetYellowZone(_low, _high, _callbackLow, _callbackHigh) {
-        if (typeof _low !== 'number' || typeof _high !== 'number' || _low >= _high) throw new Error('Invalid args');
-
-        if (_low <= this._Zones.red.low || _high >= this._Zones.red.high) throw new Error();
-        this._Zones.yellow = this._ZoneType(_low, _high, _callbackLow, _callbackHigh);
+    GetZone(val) {
+        return val < this._Zones[indexes.redLow]  ? 'redLow'
+             : val > this._Zones[indexes.redHigh] ? 'redHigh'
+             : val < this._Zones[indexes.yelLow]  ? 'yelLow'
+             : val > this._Zones[indexes.yelHigh] ? 'yelHigh'
+             : 'green';
     }
-    /**
-     * @method
-     * Метод устанавливает границы и колбэки нижней и верхней красной зоны. Если передается только один колбэк, то он будет вызыываться в обоих случаях
-     * @param {Number} _low 
-     * @param {Number} _high 
-     * @param {Function} _callbackLow колбэк нижней красной зоны
-     * @param {Function} _callbackHigh колбэк верхней красной зоны
-     * 
-     */
-    SetRedZone(_low, _high, _callbackLow, _callbackHigh) {
-        if (typeof _low !== 'number' || typeof _high !== 'number' || _low >= _high) throw new Error('Invalid args');
-
-        if (_low >= this._Zones.yellow.low || _high <= this._Zones.yellow.high) throw new Error();
-        this._Zones.red = this._ZoneType(_low, _high, _callbackLow, _callbackHigh);
-    }
-    /**
-     * @method
-     * Метод определяет колбэк, вызываемый при возвращении в зеленую зону. Так как границы зеленой зоны зависят от границ желтой/зеленой зоны, колбэк является единственным аргументом
-     * @param {Function} _callback 
-     */
-    SetGreenZone(_callback) {
-        if (typeof _callback !== 'function') throw new Error('Argument is not a function');
-        this._Zones.green = { invoke: _callback };
-    }
-    /**
-     * @method
-     * Метод получает вых. значение канала, определяет активную зону и если зона поменялась, то вызывается соответсвующий колбэк 
-     * @param {Number} val 
-     */
-    CheckZones(val) {
-        let zone = this._Zones.red.is(val) ? 'red'       //определение зоны
-              : this._Zones.yellow.is(val) ? 'yellow'
-              : 'green';
-        if (zone !== this._CurrentZone) {                //если зона поменялась
-            this._CurrentZone = zone;
-            this._Zones[zone].invoke(val);
+    CheckZone(val) {
+        if (this.GetZone(val) !== this._CurrZone) {
+            this._CurrZone = this.GetZone(val);
+            this._Callbacks[indexes[this._CurrZone]]();
         }
     }
 }
