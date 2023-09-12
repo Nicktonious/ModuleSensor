@@ -1,4 +1,3 @@
-const indexes = { redLow: 0, yelLow: 1, green: 2, yelHigh: 3, redHigh: 4 };
 /**
  * @typedef SensorPropsType - объект хранящий описательные характеристики датчика
  * @property {String} name
@@ -8,6 +7,7 @@ const indexes = { redLow: 0, yelLow: 1, green: 2, yelHigh: 3, redHigh: 4 };
  * @property {String} typeOutSignal
  * @property {String} busType
  * @property {Object} manufacturingData
+ * @property {Number} [adress]
  */
 /**
  * @class 
@@ -27,8 +27,7 @@ class ClassAncestorSensor {
      * @param {SensorPropsType} [_sensor_props] - объект с описательными характеристиками датчика, который передается в метод InitSensProperties
      */
     constructor(_opts, _sensor_props) { 
-        if (!_opts.bus instanceof I2C) throw new Error('Not an I2C bus');
-        _opts.pins.forEach(pin => {
+        if (_opts.pins) _opts.pins.forEach(pin => {
             if (!(+Pin(pin))) throw new Error('Not a pin');
         });
         if (typeof _opts.quantityChannel !== 'number' || _opts.quantityChannel < 1) throw new Error('Invalid QuantityChannel arg ');
@@ -114,12 +113,12 @@ class ClassMiddleSensor extends ClassAncestorSensor {
         const defineAccessors = i => {
             Object.defineProperty(this, `Ch${i}_Value`, {       //определяем геттеры и сеттеры по шаблону "Ch0_Value", "Ch1_Value" ...
                 get: () => {
-                    return this._Values[i]._arr[this._Values[i]._arr.length-1];
+                    return this._Channels[i]._DataRefine._FilterFunc(this._Values[i]._arr);
                 },
                 set: val => {
                     this._Values[i]._rawVal = val;
-                    val = this._Channels[i]._Limits.SupressOutValue(val);
-                    val = this._Channels[i]._Limits.CalibrateOutValue(val);
+                    val = this._Channels[i]._DataRefine.SupressOutValue(val);
+                    val = this._Channels[i]._DataRefine.CalibrateOutValue(val);
 
                     this._Values[i].push(val);
                     this._Channels[i]._Alarms.CheckZone(val);
@@ -161,17 +160,6 @@ class ClassMiddleSensor extends ClassAncestorSensor {
     }
     /**
      * @method
-     * Метод устанавливает значениязон измерения и их колбэков
-     * @param {Number} _ch_num 
-     * @param {Object} _opts 
-     * @returns 
-     */
-    SetZones(_ch_num, _opts) {
-        if (_ch_num < 0 || _ch_num >= this._QuantityChannel || typeof _opts !== 'object') throw new Error('Invalid args');
-        return this._Channels[_ch_num].SetZones(_opts);
-    }
-    /**
-     * @method
      * Метод обязывающий провести инициализацию датчика настройкой необходимых для его работы регистров 
      * @param {Object} [_opts] 
      */
@@ -203,7 +191,7 @@ class ClassMiddleSensor extends ClassAncestorSensor {
      * @param {Number} _ch_num - номер канала, частота опроса которого изменяется
      * @param {Number} _period - новый вериод опроса
      */
-    ChangeFrequency(_ch_num, _period) { }
+    ChangeFreq(_ch_num, _period) { }
     /**
      * @method
      * Метод обязывающий выполнить дополнительную конфигурацию датчика. Это может быть настройка пина прерывания, периодов измерения и прочих шагов, которые в общем случае необходимы для работы датчика, но могут переопределяться в процессе работы, и потому вынесены из метода Init() 
@@ -263,10 +251,21 @@ class ClassChannel {
 
         this._ThisSensor = sensor;          //ссылка на объект физического датчика
         this._NumChannel = num;             //номер канала (начиная с 1)
-        this._Limits = new ClassLimits();
+        this._DataRefine = new ClassDataRefine();
         this._Alarms = new ClassAlarms();
         sensor._Channels[num] = this;
     }
+    /**
+     * @getter
+     * Возвращает значение канала, хранящееся в основном объекте
+     */
+    get Value() { return this._ThisSensor[`Ch${this._NumChannel}_Value`]; }  //вых значение канала
+    /**
+     * @getter
+     * Возвращает уникальный идентификатор канала
+     */
+    get ID() { return this._ThisSensor._Name + this._NumChannel; }
+
     /**
      * @method
      * Метод обязывает запустить циклический опрос определенного канала датчика с заданной периодичностью в мс. Переданное значение периода должно сверяться с минимальным значением для данного канала и, если требуется, регулироваться, так как максимальная частота опроса зависит от характеристик датичка. 
@@ -275,7 +274,6 @@ class ClassChannel {
      * 
      * Для тех датчиков, каналы которых не могут опрашиваться одновременно, реализация разных реакций на повторный вызов метода выполняется с помощью параметра _opts
      * 
-     * @param {Number} _ch_num - номер канала 
      * @param {Number} _period - период опроса в мс
      * @param {Object} [_opts] - необязательный параметр, позволяющий передать дополнительные инструкции
      * @returns {Boolean} 
@@ -294,7 +292,7 @@ class ClassChannel {
      * Останавивает цикл, ответственный за опрос указанного канала и запускает его вновь с уже новой частотой. Возобновиться должно обновление всех каналов, которые опрашивались перед остановкой.  
      * @param {Number} _period 
      */
-    ChangeFrequency(_period) { return this._ThisSensor.ChangeFrequency.call(this._ThisSensor, Array.from(arguments)); }
+    ChangeFreq(_period) { return this._ThisSensor.ChangeFreq.call(this._ThisSensor, Array.from(arguments)); }
     /**
      * @method
      * Выполняет перезагрузку датчика
@@ -329,27 +327,29 @@ class ClassChannel {
     SetZones(_opts) {
         return this._Alarms.SetZones(_opts);
     }
-    
-    /**
-     * @getter
-     * Возвращает значение канала, хранящееся в основном объекте
-     */
-    get Value() { return this._ThisSensor[`Ch${this._NumChannel}_Value`]; }  //вых значение канала
-    /**
-     * @getter
-     * Возвращает уникальный идентификатор канала
-     */
-    get ID() { return this._ThisSensor._Name + this._NumChannel; }
 }
 /**
  * @class
  * Класс реализующий функционал для обработки числовых значений по задаваемым ограничителям (лимитам) и заданной линейной функции
  */
-class ClassLimits {
+class ClassDataRefine {
     constructor() {
-        this._Limits = [];  // 0 : outLimLow, 1: outLimHigh 
+        this._Values = [];  //[ 0 : outLimLow, 1: outLimHigh 2: _k, 3: _b ]
+        this._FilterFunc = arr => arr.reduce((curr, pr) => curr + pr, 0) / arr.length;
+
         this.SetOutLim(-Infinity, Infinity);
         this.SetTransmissionOut(1, 0);
+    }
+    /**
+     * @method
+     * Метод устанавливает фильтрующую функцию для канала
+     * @param {Function} _func 
+     * @returns 
+     */
+    SetFilterFunc(_func) {
+        if (typeof _func !== 'function') throw new Error();
+        this._FilterFunc = this._func;
+        return true;
     }
     /**
      * @method
@@ -361,8 +361,9 @@ class ClassLimits {
         if (typeof _limLow !== 'number' || typeof _limHigh !== 'number') throw new Error('Not a number');
 
         if (_limLow >= _limHigh) throw new Error('limLow value shoud be less than limHigh');
-        this._Limits[0] = _limLow;
-        this._Limits[1] = _limHigh;
+        this._Values[0] = _limLow;
+        this._Values[1] = _limHigh;
+        return true;
     }
     /**
      * @method
@@ -371,7 +372,7 @@ class ClassLimits {
      * @returns {Number}
      */
     SupressOutValue(val) {
-        return E.clip(val, this._Limits[0], this._Limits[1]);
+        return E.clip(val, this._Values[0], this._Values[1]);
     }
     /**
      * @method
@@ -381,8 +382,9 @@ class ClassLimits {
      */
     SetTransmissionOut(_k, _b) {
         if (typeof _k !== 'number' || typeof _b !== 'number') throw new Error();
-        this._K = _k;
-        this._B = _b;
+        this._Values[2] = _k;
+        this._Values[3] = _b;
+        return true;
     } 
     /**
      * @method
@@ -391,9 +393,10 @@ class ClassLimits {
      * @returns 
      */
     CalibrateOutValue(val) {
-        return val * this._K + this._B;
+        return val * this._Values[2] + this._Values[3];
     }
 }
+const indexes = { redLow: 0, yelLow: 1, green: 2, yelHigh: 3, redHigh: 4 };
 /**
  * @class
  * Класс реализующий функционал для работы с тревогами (алармами) 
@@ -408,6 +411,7 @@ class ClassAlarms {
         this._CurrZone = 'green';
     }
     /**
+     * @method
      * @param {Object} opts 
      */
     SetZones(opts) {
@@ -421,34 +425,44 @@ class ClassAlarms {
         });
 
         if (opts.yellow) {
-            if (opts.yellow.low < this._Zones[indexes.redLow] || opts.yellow.high > this._Zones[indexes.redHigh]) throw new Error();
+            if (opts.red) {
+                if (opts.yellow.low <= opts.red.low || opts.yellow.high >= opts.red.high) throw new Error();
+            }
+            else if (opts.yellow.low < this._Zones[indexes.redLow] || opts.yellow.high > this._Zones[indexes.redHigh]) throw new Error();
             this._Zones[indexes.yelLow] = opts.yellow.low;
             this._Zones[indexes.yelHigh] = opts.yellow.high;
             this._Callbacks[indexes.yelLow] = opts.yellow.cbLow;
-            this._Callbacks[indexes.yelHigh] = opts.yellow.cbHigh || opts.yellow.cbLow;
+            this._Callbacks[indexes.yelHigh] = opts.yellow.cbHigh;
         }
         if (opts.red) {
-            if (opts.red.low > this._Zones[indexes.yelLow] || opts.red.high < this._Zones[indexes.yelHigh]) throw new Error();
+            if (opts.yellow) {
+                if (opts.red.low >= opts.yellow.low || opts.red.high <= opts.yellow.high) throw new Error();
+            }
+            else if (opts.red.low > this._Zones[indexes.yelLow] || opts.red.high < this._Zones[indexes.yelHigh]) throw new Error();
             this._Zones[indexes.redLow] = opts.red.low;
-            this._Zones[indexes.redHigh] = opts.yellow.high;
+            this._Zones[indexes.redHigh] = opts.red.high;
             this._Callbacks[indexes.redLow] = opts.red.cbLow;
-            this._Callbacks[indexes.redHigh] = opts.red.cbHigh || opts.red.cbLow;
+            this._Callbacks[indexes.redHigh] = opts.red.cbHigh;
         }
         if (opts.green) {
             this._Callbacks[indexes.green] = opts.green.cb;
         }
     }
-    GetZone(val) {
-        return val < this._Zones[indexes.redLow]  ? 'redLow'
-             : val > this._Zones[indexes.redHigh] ? 'redHigh'
-             : val < this._Zones[indexes.yelLow]  ? 'yelLow'
-             : val > this._Zones[indexes.yelHigh] ? 'yelHigh'
-             : 'green';
-    }
+    /**
+     * @method
+     * Метод устанавливает значение текущей зоны измерения и, если надо, вызывает её колбэк
+     * @param {Number} val 
+     */
     CheckZone(val) {
-        if (this.GetZone(val) !== this._CurrZone) {
-            this._CurrZone = this.GetZone(val);
-            this._Callbacks[indexes[this._CurrZone]]();
+        let prevZone = this._CurrZone;
+        this._CurrZone = val < this._Zones[indexes.redLow]  ? 'redLow'
+                       : val > this._Zones[indexes.redHigh] ? 'redHigh'
+                       : val < this._Zones[indexes.yelLow]  ? 'yelLow'
+                       : val > this._Zones[indexes.yelHigh] ? 'yelHigh'
+                       : 'green';
+
+        if (prevZone !== this._CurrZone) {
+            this._Callbacks[indexes[this._CurrZone]](prevZone);
         }
     }
 }
