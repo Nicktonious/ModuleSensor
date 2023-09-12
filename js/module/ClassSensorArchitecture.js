@@ -462,7 +462,7 @@ class ClassAlarms {
                        : 'green';
 
         if (prevZone !== this._CurrZone) {
-            this._Callbacks[indexes[this._CurrZone]](val, prevZone);
+            this._Callbacks[indexes[this._CurrZone]](prevZone);
         }
     }
 }
