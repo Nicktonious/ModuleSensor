@@ -425,18 +425,24 @@ class ClassAlarms {
         });
 
         if (opts.yellow) {
-            if (opts.yellow.low < this._Zones[indexes.redLow] || opts.yellow.high > this._Zones[indexes.redHigh]) throw new Error();
+            if (opts.red) {
+                if (opts.yellow.low <= opts.red.low || opts.yellow.high >= opts.red.high) throw new Error();
+            }
+            else if (opts.yellow.low < this._Zones[indexes.redLow] || opts.yellow.high > this._Zones[indexes.redHigh]) throw new Error();
             this._Zones[indexes.yelLow] = opts.yellow.low;
             this._Zones[indexes.yelHigh] = opts.yellow.high;
             this._Callbacks[indexes.yelLow] = opts.yellow.cbLow;
-            this._Callbacks[indexes.yelHigh] = opts.yellow.cbHigh || opts.yellow.cbLow;
+            this._Callbacks[indexes.yelHigh] = opts.yellow.cbHigh;
         }
         if (opts.red) {
-            if (opts.red.low > this._Zones[indexes.yelLow] || opts.red.high < this._Zones[indexes.yelHigh]) throw new Error();
+            if (opts.yellow) {
+                if (opts.red.low >= opts.yellow.low || opts.red.high <= opts.yellow.high) throw new Error();
+            }
+            else if (opts.red.low > this._Zones[indexes.yelLow] || opts.red.high < this._Zones[indexes.yelHigh]) throw new Error();
             this._Zones[indexes.redLow] = opts.red.low;
             this._Zones[indexes.redHigh] = opts.red.high;
             this._Callbacks[indexes.redLow] = opts.red.cbLow;
-            this._Callbacks[indexes.redHigh] = opts.red.cbHigh || opts.red.cbLow;
+            this._Callbacks[indexes.redHigh] = opts.red.cbHigh;
         }
         if (opts.green) {
             this._Callbacks[indexes.green] = opts.green.cb;
@@ -448,15 +454,15 @@ class ClassAlarms {
      * @param {Number} val 
      */
     CheckZone(val) {
-        let newZone = val < this._Zones[indexes.redLow]  ? 'redLow'
-                    : val > this._Zones[indexes.redHigh] ? 'redHigh'
-                    : val < this._Zones[indexes.yelLow]  ? 'yelLow'
-                    : val > this._Zones[indexes.yelHigh] ? 'yelHigh'
-                    : 'green';
+        let prevZone = this._CurrZone;
+        this._CurrZone = val < this._Zones[indexes.redLow]  ? 'redLow'
+                       : val > this._Zones[indexes.redHigh] ? 'redHigh'
+                       : val < this._Zones[indexes.yelLow]  ? 'yelLow'
+                       : val > this._Zones[indexes.yelHigh] ? 'yelHigh'
+                       : 'green';
 
-        if (newZone !== this._CurrZone) {
-            this._CurrZone = newZone;
-            this._Callbacks[indexes[this._CurrZone]]();
+        if (prevZone !== this._CurrZone) {
+            this._Callbacks[indexes[this._CurrZone]](val, prevZone);
         }
     }
 }
