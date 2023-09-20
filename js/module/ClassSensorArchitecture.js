@@ -30,14 +30,11 @@ class ClassAncestorSensor {
         if (_opts.pins) _opts.pins.forEach(pin => {
             if (!(+Pin(pin))) throw new Error('Not a pin');
         });
-        if (typeof _opts.quantityChannel !== 'number' || _opts.quantityChannel < 1) throw new Error('Invalid QuantityChannel arg ');
-
+        
         this._Bus = _opts.bus;
         this._Pins = _opts.pins;
-        this._QuantityChannel = _opts.quantityChannel;
 
-        if (_opts.address) this._Address = _opts.adress;
-        if (_sensor_props) this.InitSensProperties(_sensor_props);
+        this.InitSensProperties(_sensor_props);
     }
     /**
      * @method
@@ -46,21 +43,23 @@ class ClassAncestorSensor {
      */
     InitSensProperties(sensor_props) {  
         const changeNotation = str => `_${str[0].toUpperCase()}${str.substr(1)}`;       //converts "propName" -> "_PropName"
-        ['name', 'type', 'typeInSignal', 'typeOutSignal'].forEach(prop => {
-            if (typeof sensor_props[prop] !== 'string') throw new Error('Incorrect sensor property');
-            
-            this[changeNotation(prop)] = sensor_props[prop];
-        });
-        
-        ['channelNames', 'busType'].forEach(propArr => {
-            sensor_props[propArr].forEach(strElem => {
-                if (typeof strElem !== 'string') throw new Error('Incorrect sensor property');
-                this[changeNotation(propArr)] = sensor_props[propArr];
+
+        if (typeof sensor_props.quantityChannel !== 'number' || sensor_props.quantityChannel < 1) throw new Error('Invalid QuantityChannel arg ');
+        this._QuantityChannel = sensor_props.quantityChannel;
+
+        ['name', 'type', 'typeInSignal', 'typeOutSignal', 'channelNames', 'busType']
+            .filter(prop => sensor_props[prop])
+            .forEach(prop => {
+                if (sensor_props[prop] instanceof Array) {
+                    sensor_props[prop].forEach(elem => {
+                        if (typeof elem !== 'string') throw new Error('Incorrect sensor property');
+                    });
+                }
+                else if (typeof sensor_props[prop] !== 'string') throw new Error('Incorrect sensor property');
+                this[changeNotation(prop)] = sensor_props[prop];
             });
-        });
 
         this._ManufacturingData = sensor_props.manufacturingData;
-        this._ArePropsInited = true;
     }
 }
 /**
@@ -347,7 +346,7 @@ class ClassDataRefine {
      * @returns 
      */
     SetFilterFunc(_func) {
-        if (typeof _func !== 'function') throw new Error();
+        if (typeof _func !== 'function') throw new Error('Not a function');
         this._FilterFunc = this._func;
         return true;
     }
@@ -381,7 +380,7 @@ class ClassDataRefine {
      * @param {Number} _b 
      */
     SetTransmissionOut(_k, _b) {
-        if (typeof _k !== 'number' || typeof _b !== 'number') throw new Error();
+        if (typeof _k !== 'number' || typeof _b !== 'number') throw new Error('Not a number');
         this._Values[2] = _k;
         this._Values[3] = _b;
         return true;
@@ -421,14 +420,14 @@ class ClassAlarms {
             red: () => (opts.red.low < opts.red.high)
         };
         ['red', 'yellow', 'green'].filter(zoneName => opts[zoneName]).forEach(zoneName => {
-            if (!checkParams[zoneName]) throw new Error();
+            if (!checkParams[zoneName]) throw new Error('Incorrect args');
         });
 
         if (opts.yellow) {
             if (opts.red) {
-                if (opts.yellow.low <= opts.red.low || opts.yellow.high >= opts.red.high) throw new Error();
+                if (opts.yellow.low <= opts.red.low || opts.yellow.high >= opts.red.high) throw new Error('Invalid args');
             }
-            else if (opts.yellow.low < this._Zones[indexes.redLow] || opts.yellow.high > this._Zones[indexes.redHigh]) throw new Error();
+            else if (opts.yellow.low < this._Zones[indexes.redLow] || opts.yellow.high > this._Zones[indexes.redHigh]) throw new Error('Invalid args');
             this._Zones[indexes.yelLow] = opts.yellow.low;
             this._Zones[indexes.yelHigh] = opts.yellow.high;
             this._Callbacks[indexes.yelLow] = opts.yellow.cbLow;
@@ -436,9 +435,9 @@ class ClassAlarms {
         }
         if (opts.red) {
             if (opts.yellow) {
-                if (opts.red.low >= opts.yellow.low || opts.red.high <= opts.yellow.high) throw new Error();
+                if (opts.red.low >= opts.yellow.low || opts.red.high <= opts.yellow.high) throw new Error('Invalid args');
             }
-            else if (opts.red.low > this._Zones[indexes.yelLow] || opts.red.high < this._Zones[indexes.yelHigh]) throw new Error();
+            else if (opts.red.low > this._Zones[indexes.yelLow] || opts.red.high < this._Zones[indexes.yelHigh]) throw new Error('Invalid args');
             this._Zones[indexes.redLow] = opts.red.low;
             this._Zones[indexes.redHigh] = opts.red.high;
             this._Callbacks[indexes.redLow] = opts.red.cbLow;
