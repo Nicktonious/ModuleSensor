@@ -9,6 +9,7 @@
  * @property {Object} manufacturingData
  * @property {Number} [adress]
  */
+
 /**
  * @class 
  * Самый "старший" предок в иерархии классов датчиков. 
@@ -19,14 +20,13 @@ class ClassAncestorSensor {
      * @typedef SensorOptsType
      * @property {any} bus - шина
      * @property {[Pin]} pins - массив пинов
-     * @property {Number} quantityChannel - количество каналов датчика 
      */
     /**
      * @constructor
+     * @param {SensorPropsType} _sensor_props - объект с описательными характеристиками датчика, который передается в метод InitSensProperties
      * @param {SensorOptsType} _opts - объект который содержит минимальный набор параметров, необхходимых для обеспечения работы датчика
-     * @param {SensorPropsType} [_sensor_props] - объект с описательными характеристиками датчика, который передается в метод InitSensProperties
      */
-    constructor(_opts, _sensor_props) { 
+    constructor(_sensor_props, _opts) { 
         if (_opts.pins) _opts.pins.forEach(pin => {
             if (!(+Pin(pin))) throw new Error('Not a pin');
         });
@@ -38,17 +38,16 @@ class ClassAncestorSensor {
     }
     /**
      * @method
-     * Метод сохраняет в виде полей общие характеристики датчика (_sensor_props)
+     * Метод инициализирует поля, хранящие описательные характеристики датчика.
      * @param {SensorPropsType} sensor_props 
      */
-    InitSensProperties(sensor_props) {  
+    InitSensProperties(sensor_props) { 
         const changeNotation = str => `_${str[0].toUpperCase()}${str.substr(1)}`;       //converts "propName" -> "_PropName"
 
         if (typeof sensor_props.quantityChannel !== 'number' || sensor_props.quantityChannel < 1) throw new Error('Invalid QuantityChannel arg ');
         this._QuantityChannel = sensor_props.quantityChannel;
 
-        ['name', 'type', 'typeInSignal', 'typeOutSignal', 'channelNames', 'busType']
-            .filter(prop => sensor_props[prop])
+        ['name', 'type', 'typeInSignal', 'typeOutSignal', 'channelNames', 'busTypes']
             .forEach(prop => {
                 if (sensor_props[prop] instanceof Array) {
                     sensor_props[prop].forEach(elem => {
@@ -59,7 +58,7 @@ class ClassAncestorSensor {
                 this[changeNotation(prop)] = sensor_props[prop];
             });
 
-        this._ManufacturingData = sensor_props.manufacturingData;
+        this._ManufacturingData = sensor_props.manufacturingData || {};
     }
 }
 /**
@@ -70,13 +69,14 @@ class ClassAncestorSensor {
 class ClassMiddleSensor extends ClassAncestorSensor {
     /**
      * @constructor
+     * @param {SensorPropsType} _sensor_props 
      * @param {SensorOptsType} _opts
-     * @param {SensorPropsType} [_sensor_props] 
      */
-    constructor(_opts, _sensor_props) {
-        ClassAncestorSensor.apply(this, [_opts, _sensor_props]);
+    constructor(_sensor_props, _opts) {
+        ClassAncestorSensor.apply(this, [_sensor_props, _opts]);
         this._Values = [];
         this._Channels = [];
+        this._IsChUsed = [];
 
         this.InitChannels();
         this._IsInited = true;
@@ -145,6 +145,7 @@ class ClassMiddleSensor extends ClassAncestorSensor {
             };
             defineAccessors(i);
         }
+        this._IsChUsed[i] = false;
     }
     /**
      * @method 
@@ -172,7 +173,7 @@ class ClassMiddleSensor extends ClassAncestorSensor {
      * Для тех датчиков, каналы которых не могут опрашиваться одновременно, реализация разных реакций на повторный вызов метода выполняется с помощью параметра _opts
      * 
      * @param {Number} _ch_num - номер канала 
-     * @param {Number} _period - период опроса в мс
+     * @param {Number} [_period] - период опроса в мс
      * @param {Object} [_opts] - необязательный параметр, позволяющий передать дополнительные аргументы
      * @returns {Boolean} 
      */
@@ -265,6 +266,8 @@ class ClassChannel {
      */
     get ID() { return this._ThisSensor._Name + this._NumChannel; }
 
+    get IsUsed() { return this._ThisSensor._IsChUsed[this._NumChannel]; }
+
     /**
      * @method
      * Метод обязывает запустить циклический опрос определенного канала датчика с заданной периодичностью в мс. Переданное значение периода должно сверяться с минимальным значением для данного канала и, если требуется, регулироваться, так как максимальная частота опроса зависит от характеристик датичка. 
@@ -273,7 +276,7 @@ class ClassChannel {
      * 
      * Для тех датчиков, каналы которых не могут опрашиваться одновременно, реализация разных реакций на повторный вызов метода выполняется с помощью параметра _opts
      * 
-     * @param {Number} _period - период опроса в мс
+     * @param {Number} [_period] - период опроса в мс
      * @param {Object} [_opts] - необязательный параметр, позволяющий передать дополнительные инструкции
      * @returns {Boolean} 
      */
@@ -347,7 +350,7 @@ class ClassDataRefine {
      */
     SetFilterFunc(_func) {
         if (typeof _func !== 'function') throw new Error('Not a function');
-        this._FilterFunc = this._func;
+        this._FilterFunc = _func;
         return true;
     }
     /**
