@@ -79,7 +79,6 @@ class ClassMiddleSensor extends ClassAncestorSensor {
         this._IsChUsed = [];
 
         this.InitChannels();
-        this._IsInited = true;
     }
     /**
      * @getter
@@ -104,7 +103,6 @@ class ClassMiddleSensor extends ClassAncestorSensor {
      * Метод инициализирует поля, геттеры и сеттеры необходимые для  организации хранения и использования данных с каналов датчика.
      */
     InitChannels() {
-        if (this._IsInited) return;
         /**
          * Примечание! Объявление аксессоров инкапсулируется внутрь функции, так как еще на espruino версии 2.13 область видимости локальных переменных действует не совсем так как в node js, 
          * в связи с чем в блоке кода под Object.defineProperty(... значение i не остается константным и изменение i в теле/условии цикла ломает логику в коде аксессора 
@@ -149,7 +147,7 @@ class ClassMiddleSensor extends ClassAncestorSensor {
     }
     /**
      * @method 
-     * Метод который устанавливает глубину фильтруемых значений - изменяет количество значений, хранящихся в кольцнвом буффере (_Values[i]) в момент времени.
+     * Метод который устанавливает глубину фильтруемых значений - изменяет количество значений, хранящихся в кольцевом буффере (_Values[i]) в момент времени.
      * @param {Number} _ch_num 
      * @param {Number} _depth 
      */
@@ -326,9 +324,6 @@ class ClassChannel {
     ConfigureRegs(_opts) {
         return this._ThisSensor.ConfigureRegs.apply(this._ThisSensor, Array.from(arguments));
     }
-    SetZones(_opts) {
-        return this._Alarms.SetZones(_opts);
-    }
 }
 /**
  * @class
@@ -414,6 +409,7 @@ class ClassAlarms {
     }
     /**
      * @method
+     * Метод, который задает зоны измерения и их функции-обработчики
      * @param {Object} opts 
      */
     SetZones(opts) {
@@ -452,7 +448,7 @@ class ClassAlarms {
     }
     /**
      * @method
-     * Метод устанавливает значение текущей зоны измерения и, если надо, вызывает её колбэк
+     * Метод обновляет значение текущей зоны измерения по переданному значению и, если зона сменилась, вызывает её колбэк
      * @param {Number} val 
      */
     CheckZone(val) {
