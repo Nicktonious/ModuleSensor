@@ -191,7 +191,7 @@ ch0._Alarms.SetZones({
         cbHigh: () => { console.log('H_YELLOW')} 
     },
     green: { 
-        cb: (prevZone) => { console.log(`Exit ${prevZone}, now GREEN zone`); } 
+        cb: (prevZone) => { console.log(`Left ${prevZone}, now GREEN zone`); } 
     }
 });
 
