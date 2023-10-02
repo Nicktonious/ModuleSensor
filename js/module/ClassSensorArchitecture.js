@@ -114,8 +114,8 @@ class ClassMiddleSensor extends ClassAncestorSensor {
                 },
                 set: val => {
                     this._Values[i]._rawVal = val;
+                    val = this._Channels[i]._DataRefine.TransformOutValue(val);
                     val = this._Channels[i]._DataRefine.SupressOutValue(val);
-                    val = this._Channels[i]._DataRefine.CalibrateOutValue(val);
 
                     this._Values[i].push(val);
                     this._Channels[i]._Alarms.CheckZone(val);
@@ -389,7 +389,7 @@ class ClassDataRefine {
      * @param {Number} val 
      * @returns 
      */
-    CalibrateOutValue(val) {
+    TransformOutValue(val) {
         return val * this._Values[2] + this._Values[3];
     }
 }
