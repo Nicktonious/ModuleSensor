@@ -212,7 +212,7 @@ setTimeout(() => {
 ### **Методы**
 - <mark style="background-color: lightblue">SetFilterFunc(_func)</mark> - Метод устанавливает фильтрующую функцию для канала
 - <mark style="background-color: lightblue">SetOutLim(_limLow, _limHigh)</mark> - Метод устанавливает значения ограничителей выходных значений.
-- <mark style="background-color: lightblue">SupressOutValue(val)</mark> - Метод возвращает значение, прошедшее через супрессорную функцию;  
+- <mark style="background-color: lightblue">SupressOutValue(val)</mark> - Метод возвращает значение, прошедшее через супрессорную функцию;
 - <mark style="background-color: lightblue">SetTransmissionOut(_k, _b)</mark> - Метод устанавливает коэффициенты k и b функции выходных значений канала;
 - <mark style="background-color: lightblue">TransformOutValue(val)</mark> - Метод возвращает значение, прошедшее через коэффициенты функции вых.значений.
 
