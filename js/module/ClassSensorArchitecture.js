@@ -146,17 +146,6 @@ class ClassMiddleSensor extends ClassAncestorSensor {
         this._IsChUsed[i] = false;
     }
     /**
-     * @method 
-     * Метод который устанавливает глубину фильтруемых значений - изменяет количество значений, хранящихся в кольцевом буффере (_Values[i]) в момент времени.
-     * @param {Number} _ch_num 
-     * @param {Number} _depth 
-     */
-    SetFilterDepth(_ch_num, _depth) { 
-        if (_ch_num < 0 || _ch_num >= this._QuantityChannel || _depth < 1) throw new Error('Invalid args');
-        this._Values[_ch_num]._depth = _depth;
-        return true;
-    }
-    /**
      * @method
      * Метод обязывающий провести инициализацию датчика настройкой необходимых для его работы регистров 
      * @param {Object} [_opts] 
@@ -304,7 +293,7 @@ class ClassChannel {
      * @param {Number} _depth 
     */
     SetFilterDepth(_depth) {
-        return this._ThisSensor.SetFilterDepth(this._NumChannel, _depth);
+        this._ThisSensor._Values[this._NumChannel]._depth = _depth;
     }
     /**
      * @method

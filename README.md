@@ -73,7 +73,7 @@ const _opts = {
 - <mark style="background-color: lightblue">_Name</mark> - имя датчика;
 - <mark style="background-color: lightblue">_Type</mark> - тип устройства (для всех датчиков имеет значение "sensor");
 - <mark style="background-color: lightblue">_ChannelNames</mark> - массив с названиями каналов;
-- <mark style="background-color: lightblue">_TypeInSensor_</mark> - тип входного сигнала;
+- <mark style="background-color: lightblue">_TypeInSensor</mark> - тип входного сигнала;
 - <mark style="background-color: lightblue">_TypeOutSensor</mark> - тип выходного сигнала;
 - <mark style="background-color: lightblue">_QuantityChannel</mark> - число физических каналов датчика;
 - <mark style="background-color: lightblue">_BusTypes</mark> - массив со строковыми представлениями типов шин, на которых может работать датчик;
@@ -216,6 +216,7 @@ setTimeout(() => {
 </mark>
 - <mark style="background-color: lightblue">SetTransmissionOut(_k, _b)</mark> - Метод устанавливает коэффициенты k и b функции выходных значений канала
 - <mark style="background-color: lightblue">TransformOutValue(val)</mark> - Метод возвращает значение, прошедшее через коэффициенты функции вых.значений
+
 
 <div align='center'>
     <img src="./res/math2.png" alt="Image not found">
