@@ -201,6 +201,7 @@ setTimeout(() => {
 <div align='center'>
     <img src="./res/example-1.png" alt="Image not found">
 </div>
+
 ### **ClassDataRefine** 
 Назначение класса заключается в обеспечении математической обработки выходных значений с датчика. **ClassDataRefine** позволяет настроить для отдельно взятого канала:
 - Функцию-фильтр;
