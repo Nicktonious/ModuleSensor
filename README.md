@@ -24,7 +24,7 @@ ModuleSensorArchitecture - стек классов, предоставляющи
 - Прикладная - класс, отвечающий за отдельно взятый канал датчика. Этот класс реализуется вне данного стека.
 
 ### **ClassAncestorSensor** 
-Базовый класс в представленной иерархии. Этот класс является отправной точкой для создания объектов конкретных датчиков и обеспечивает сбор и хранение информации о них. Его поля предоставляют основные характеристики, необходимые для идентификации и настройки датчика в рамках модуля ModuleSensorArchitecture. В первую очередь собирает в себе самые базовые сведения о датчике: переданные в его конструктор параметры и описательную характеристику. Перечень полей см. ниже.
+Базовый класс в представленной иерархии. Этот класс является отправной точкой для создания объектов конкретных датчиков и обеспечивает сбор и хранение информации о них. Его поля предоставляют основные характеристики, необходимые для идентификации и настройки датчика в рамках модуля ModuleSensorArchitecture. В первую очередь собирает в себе самые базовые сведения о датчике: переданные в его конструктор параметры и описательную характеристику. Перечень полей см. ниже
 
 ### **Конструктор**
 Конструктор принимает два параметра: объект типа **SensorPropsType** и объект типа **SensorOptsType**.
@@ -77,7 +77,7 @@ const _opts = {
 - <mark style="background-color: lightblue">_TypeOutSensor</mark> - тип выходного сигнала;
 - <mark style="background-color: lightblue">_QuantityChannel</mark> - число физических каналов датчика;
 - <mark style="background-color: lightblue">_BusTypes</mark> - массив со строковыми представлениями типов шин, на которых может работать датчик;
-- <mark style="background-color: lightblue">_ManufacturingData</mark> - объект со сведениями о производителе и поставщике датчика, а так же его односложное описание.
+- <mark style="background-color: lightblue">_ManufacturingData</mark> - объект со сведениями о производителе и поставщике датчика, а так же его односложное описание;
 
 ### **Методы**
 - <mark style="background-color: lightblue">InitSensProps(_sensor_props)</mark> - Метод инициализирует поля, хранящие описательные характеристики датчика.
@@ -130,7 +130,7 @@ ClassAncestorSensor.apply(this, [_sensor_props, _opts]);
 - <mark style="background-color: lightblue">_ThisChannel</mark> - ссылка на основной объект датчика;
 - <mark style="background-color: lightblue">_NumChannel</mark> - номер канала;
 - <mark style="background-color: lightblue">_DataRefine</mark> - объект класса ClassDataRefine;
-- <mark style="background-color: lightblue">_Alarms</mark> - объект класса ClassAlarms.
+- <mark style="background-color: lightblue">_Alarms</mark> - объект класса ClassAlarms;
 
 ### **Аксессоры**
 - <mark style="background-color: lightblue">Value</mark> -  геттер который ссылается на аксессор Ch*N*_Value (N = this._NumChannel) основного объекта датичка. Сбор данных предусмотрен только через этот аксессор; 
@@ -207,22 +207,23 @@ setTimeout(() => {
 
 ### **Поля**
 - <mark style="background-color: lightblue">_Values</mark> - массив с используемыми коэффициентами;
-- <mark style="background-color: lightblue">_FilterFunc</mark> - функция которая вызывается из ClassMiddleSensor и применяется для фильтрации значений. По фильтр-функция по умолчанию возвращает усредненное значение.
+- <mark style="background-color: lightblue">_FilterFunc</mark> - функция которая вызывается из ClassMiddleSensor и применяется для фильтрации значений. По фильтр-функция по умолчанию возвращает усредненное значение;
 
 ### **Методы**
 - <mark style="background-color: lightblue">SetFilterFunc(_func)</mark> - Метод устанавливает фильтрующую функцию для канала
 - <mark style="background-color: lightblue">SetOutLim(_limLow, _limHigh)</mark> - Метод устанавливает значения ограничителей выходных значений.
-- <mark style="background-color: lightblue">SupressOutValue(val)</mark> - Метод возвращает значение, прошедшее через супрессорную функцию;
-- <mark style="background-color: lightblue">SetTransmissionOut(_k, _b)</mark> - Метод устанавливает коэффициенты k и b функции выходных значений канала;
-- <mark style="background-color: lightblue">TransformOutValue(val)</mark> - Метод возвращает значение, прошедшее через коэффициенты функции вых.значений.
+- <mark style="background-color: lightblue">SupressOutValue(val)
+</mark>
+- <mark style="background-color: lightblue">SetTransmissionOut(_k, _b)</mark> - Метод устанавливает коэффициенты k и b функции выходных значений канала
+- <mark style="background-color: lightblue">TransformOutValue(val)</mark> - Метод возвращает значение, прошедшее через коэффициенты функции вых.значений
 
 <div align='center'>
-    <img src="./res/math.png" alt="Image not found">
+    <img src="./res/math2.png" alt="Image not found">
 </div>
 
-### **Обработка выходных данных**
+### **Обработка значений с датчика**
 <div align='center'>
-    <img src="./res/data transformation2.png" alt="Image not found">
+    <img src="./res/data transformation.png" alt="Image not found">
 </div>
 
 ### **Примеры**
@@ -240,7 +241,7 @@ setInterval(() => {
 setTimeout(() => {
     //Настройка перевода значений в Фаренгейты
     ch._DataRefine.SetTransmissionOut(1.8, 32);
-}, 6000)
+}, 6000);
 
 //Установка супрессорных ограничителей
 ch._DataRefine.SupressOutValue(30, 250);
@@ -252,13 +253,13 @@ ch._DataRefine.SupressOutValue(30, 250);
 Алармы представляют собой механизмы оповещения или предупреждения, которые срабатывают, когда измеренные значения выходят за пределы заданных. 
 
 <div align='center'>
-    <img src="./res/ZONES.png" alt="Image not found">
+    <img src="./res/ZONES_low_res.png" alt="Image not found">
 </div>
 
 ### **Поля**
 - <mark style="background-color: lightblue">_Zones</mark> - Массив со значениями границ, которые задают зоны измерения;
 - <mark style="background-color: lightblue">_Callbacks</mark> - Массив с коллбэками к измерительным зонам;
-- <mark style="background-color: lightblue">_CurrZone</mark> - Строковое представление текущей зоны.
+- <mark style="background-color: lightblue">_CurrZone</mark> - строковое представление текущей зоны.
 
 ### **Методы**
 - <mark style="background-color: lightblue">SetZones(opts)</mark> - Метод, который задает зоны измерения и их функции-обработчики
@@ -314,4 +315,5 @@ ch1._Alarms.SetZones({
 ```
 </div>
 
+### **Зависимости**
     
