@@ -223,12 +223,12 @@ setTimeout(() => {
 
 
 <div align='center'>
-    <img src="./res/math2.png" alt="Image not found">
+    <img src="./res/math.png" alt="Image not found">
 </div>
 
 ### **Обработка значений с датчика**
 <div align='center'>
-    <img src="./res/data transformation.png" alt="Image not found">
+    <img src="./res/data_transformation.png" alt="Image not found">
 </div>
 
 ### **Примеры**
@@ -258,7 +258,7 @@ ch._DataRefine.SupressOutValue(30, 250);
 Алармы представляют собой механизмы оповещения или предупреждения, которые срабатывают, когда измеренные значения выходят за пределы заданных. 
 
 <div align='center'>
-    <img src="./res/ZONES_low_res.png" alt="Image not found">
+    <img src="./res/zones_low_res.png" alt="Image not found">
 </div>
 
 ### **Поля**
