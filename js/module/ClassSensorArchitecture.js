@@ -118,7 +118,7 @@ class ClassMiddleSensor extends ClassAncestorSensor {
                     val = this._Channels[i]._DataRefine.SupressOutValue(val);
 
                     this._Values[i].push(val);
-                    this._Channels[i]._Alarms.CheckZone(val);
+                    this._Channels[i]._Alarms.CheckZone(`this.Ch${i}_Value`);
                 }
             });
         }
