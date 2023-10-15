@@ -132,22 +132,28 @@ setTimeout(() => {
 #### Смена единицы измерения температуры на ходу с помощью настройки линейной функции:
 ```js
 //Инициализация канала, измеряющего температуру в °C 
-const temperatuteCh = meteoSensor.GetChannel(num);
+const temprtCh = meteoSensor.GetChannel(num);
 
 //Запуск и вывод показаний
-ch.Start();
+temprtCh.Start();
+let post = '°C';
 setInterval(() => {
-    console.log(`Value = ${temperatureCh.Value}`);
+    console.log(`Value = ${(temprtCh.Value).toFixed(2)} ${post}`);
 }, 2000);
 
 setTimeout(() => {
     //Настройка перевода значений в Фаренгейты
-    ch._DataRefine.SetTransmissionOut(1.8, 32);
-}, 6000);
+    temprtCh._DataRefine.SetTransmissionOut(1.8, 32);
+    post = 'F';
+}, 4000);
 
-//Установка супрессорных ограничителей
-ch._DataRefine.SupressOutValue(30, 250);
 ```
+#### Результат выполнения:
+
+<div align='left'>
+    <img src="./res/example-2.png" alt="Image not found">
+</div>
+
 </div>
 
 ### Зависимости

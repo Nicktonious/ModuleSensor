@@ -11,7 +11,7 @@
 <div style = "color: #555">
 
 Класс, представляющий каждый отдельно взятый канал датчика. В парадигме фрейморка EcoLight именно через объект этого класса происходит прикладная работа с датчком. Является "синглтоном" для основного объекта датчика. Хранит в себе ссылки на основной объект сенсора и "проброшенные" методы для работы с данным каналом датчика, включая аксессоры. 
-Также **ClassChannel** композирует в себе сервисные классы (см. **ClassDataRefine** и **ClassAlarms**) которые безусловно используются в аксессорах **ClassMiddleSensor** при обработке считываемых с датчика значений.
+Также **ClassChannel** композирует в себе сервисные классы (см. [ClassDataRefine](./README_DATA_REFINE.md) и [ClassAlarms](./README_ALARMS.md)) которые безусловно используются в [аксессорах](./README_MIDDLE.md#аксессоры) ClassMiddleSensor при обработке считываемых с датчика значений.
 </div>
 
 ### Поля
@@ -28,7 +28,7 @@
 
 - <mark style="background-color: lightblue">Value</mark> - ссылается на аксессор Ch*N*_Value (N = this._NumChannel) основного объекта датичка. Сбор данных предусмотрен только через этот аксессор; 
 - <mark style="background-color: lightblue">CountChannels</mark> - возвращает количество корректно инициализированных каналов типа **ClassChannel**;
-- <mark style="background-color: lightblue">ID</mark> - возвращает идентификатор датичка (канала);
+- <mark style="background-color: lightblue">ID</mark> - возвращает идентификатор датчика (канала);
 - <mark style="background-color: lightblue">IsUsed</mark> - возвращает *true* если канал уже опрашивается, иначе - false.
 </div>
 
@@ -41,7 +41,7 @@
 - <mark style="background-color: lightblue">Run([_opts])</mark>
 - <mark style="background-color: lightblue">ConfigureRegs()</mark>
 
-Более развернутое описание методов [ClassMiddleSensor]
+Данные методы ссылаются на методы, объявленные в **ClassMiddleSensor** и реализованные в прикладном классе датичка. Их развернутое описание [по ссылке](./README_MIDDLE.md#методы)
 </div>
 
 </div>
