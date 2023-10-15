@@ -119,6 +119,7 @@ class ClassMiddleSensor extends ClassAncestorSensor {
                     val = this._Channels[i]._DataRefine.SuppressValue(val);
 
                     this._Values[i].push(val);
+
                     this._Channels[i]._Alarms.CheckZone(`this.Ch${i}_Value`);
                 }
             });
@@ -240,7 +241,7 @@ class ClassChannelSensor {
         this._ThisSensor = sensor;          //ссылка на объект физического датчика
         this._NumChannel = num;             //номер канала (начиная с 1)
         this._DataRefine = new ClassDataRefine();
-        this._Alarms = new ClassAlarms();
+        this._Alarms = new ClassAlarms(this);
         sensor._Channels[num] = this;
     }
     /**
@@ -392,9 +393,10 @@ const indexes = { redLow: 0, yelLow: 1, green: 2, yelHigh: 3, redHigh: 4 };
  * 
  */
 class ClassAlarms {
-    constructor() {
+    constructor(_channel) {
+        this._Channel = _channel;
         this._Zones = [];
-        this._Callbacks = [];
+        this._Callbacks = new Array(5).fill((ch, z) => {});
         this._CurrZone = 'green';
     }
     /**
@@ -450,7 +452,7 @@ class ClassAlarms {
                        : 'green';
 
         if (prevZone !== this._CurrZone) {
-            this._Callbacks[indexes[this._CurrZone]](prevZone);
+            this._Callbacks[indexes[this._CurrZone]](this._Channel, prevZone);
         }
     }
 }
