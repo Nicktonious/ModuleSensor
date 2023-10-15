@@ -7,7 +7,6 @@
  * @property {String} typeOutSignal
  * @property {String} busType
  * @property {Object} manufacturingData
- * @property {Number} [adress]
  */
 
 /**
@@ -20,6 +19,7 @@ class ClassAncestorSensor {
      * @typedef SensorOptsType
      * @property {any} bus - шина
      * @property {[Pin]} pins - массив пинов
+     * @property {Number} [address] - адресс устрйоства на шине
      */
     /**
      * @constructor
@@ -33,6 +33,7 @@ class ClassAncestorSensor {
         
         this._Bus = _opts.bus;
         this._Pins = _opts.pins;
+        if (typeof _opts.address == 'number') this._Address = _opts.address;
 
         this.InitSensProperties(_sensor_props);
     }
@@ -85,17 +86,17 @@ class ClassMiddleSensor extends ClassAncestorSensor {
      * Возвращает количество инстанцированных объектов каналов датчика.
      */
     get CountChannels() {
-        return this._Channels.filter(o => o instanceof ClassChannel).length;
+        return this._Channels.filter(o => o instanceof ClassChannelSensor).length;
     }
     /**
      * @method
      * Возвращает объект соответствующего канала если он уже был инстанцирован. Иначе возвращает null
      * @param {Number} _num - номер канала
-     * @returns {ClassChannel}
+     * @returns {ClassChannelSensor}
      */
     GetChannel(_num) {
         const num = _num;
-        if (this._Channels[num] instanceof ClassChannel) return this._Channels[num];
+        if (this._Channels[num] instanceof ClassChannelSensor) return this._Channels[num];
         return null;
     }
     /**
@@ -114,8 +115,8 @@ class ClassMiddleSensor extends ClassAncestorSensor {
                 },
                 set: val => {
                     this._Values[i]._rawVal = val;
-                    val = this._Channels[i]._DataRefine.TransformOutValue(val);
-                    val = this._Channels[i]._DataRefine.SupressOutValue(val);
+                    val = this._Channels[i]._DataRefine.TransformValue(val);
+                    val = this._Channels[i]._DataRefine.SuppressValue(val);
 
                     this._Values[i].push(val);
                     this._Channels[i]._Alarms.CheckZone(`this.Ch${i}_Value`);
@@ -125,7 +126,7 @@ class ClassMiddleSensor extends ClassAncestorSensor {
 
         for (let i = 0; i < this._QuantityChannel; i++) {
             try {
-                this._Channels[i] = new ClassChannel(this, i);  // инициализируем и сохраняем объекты каналов
+                this._Channels[i] = new ClassChannelSensor(this, i);  // инициализируем и сохраняем объекты каналов
             } catch (e) {
                 this._Channels[i] = null;
             }
@@ -227,14 +228,14 @@ class ClassMiddleSensor extends ClassAncestorSensor {
  * @class
  * Класс, представляющий каждый отдельно взятый канал датчика. При чем, каждый канал является "синглтоном" для своего родителя.  
  */
-class ClassChannel {
+class ClassChannelSensor {
     /**
      * @constructor
      * @param {ClassMiddleSensor} sensor - ссылка на основной объект датчика
      * @param {Number} num - номер канала
      */
     constructor(sensor, num) {
-        if (sensor._Channels[num] instanceof ClassChannel) return sensor._Channels[num];    //если объект данного канала однажды уже был иницииализирован, то вернется ссылка, хранящаяся в объекте физического сенсора  
+        if (sensor._Channels[num] instanceof ClassChannelSensor) return sensor._Channels[num];    //если объект данного канала однажды уже был иницииализирован, то вернется ссылка, хранящаяся в объекте физического сенсора  
 
         this._ThisSensor = sensor;          //ссылка на объект физического датчика
         this._NumChannel = num;             //номер канала (начиная с 1)
@@ -323,8 +324,8 @@ class ClassDataRefine {
         this._Values = [];  //[ 0 : outLimLow, 1: outLimHigh 2: _k, 3: _b ]
         this._FilterFunc = arr => arr.reduce((curr, pr) => curr + pr, 0) / arr.length;
 
-        this.SetOutLim(-Infinity, Infinity);
-        this.SetTransmissionOut(1, 0);
+        this.SetLim(-Infinity, Infinity);
+        this.SetTransformFunc(1, 0);
     }
     /**
      * @method
@@ -339,11 +340,11 @@ class ClassDataRefine {
     }
     /**
      * @method
-     * Метод устанавливает значения ограничителей выходных значений.
+     * Метод устанавливает границы супрессорной функции
      * @param {Number} _limLow 
      * @param {Number} _limHigh 
      */
-    SetOutLim(_limLow, _limHigh) {
+    SetLim(_limLow, _limHigh) {
         if (typeof _limLow !== 'number' || typeof _limHigh !== 'number') throw new Error('Not a number');
 
         if (_limLow >= _limHigh) throw new Error('limLow value shoud be less than limHigh');
@@ -353,20 +354,20 @@ class ClassDataRefine {
     }
     /**
      * @method
-     * Метод возвращает значение, прошедшее через ограничители вых.значений  
+     * Метод возвращает значение, прошедшее через супрессорную функцию
      * @param {Number} val 
      * @returns {Number}
      */
-    SupressOutValue(val) {
+    SuppressValue(val) {
         return E.clip(val, this._Values[0], this._Values[1]);
     }
     /**
      * @method
-     * Устанавливает коэффициенты k и b функции выходных значений канала
+     * Устанавливает коэффициенты k и b трансформирующей линейной функции 
      * @param {Number} _k 
      * @param {Number} _b 
      */
-    SetTransmissionOut(_k, _b) {
+    SetTransformFunc(_k, _b) {
         if (typeof _k !== 'number' || typeof _b !== 'number') throw new Error('Not a number');
         this._Values[2] = _k;
         this._Values[3] = _b;
@@ -374,18 +375,18 @@ class ClassDataRefine {
     } 
     /**
      * @method
-     * возвращает значение, прошедшее через коэффициенты функции вых.значений
+     * Возвращает значение, преобразованное линейной функцией
      * @param {Number} val 
      * @returns 
      */
-    TransformOutValue(val) {
+    TransformValue(val) {
         return val * this._Values[2] + this._Values[3];
     }
 }
 const indexes = { redLow: 0, yelLow: 1, green: 2, yelHigh: 3, redHigh: 4 };
 /**
  * @class
- * Класс реализующий функционал для работы с тревогами (алармами) 
+ * Реализует функционал для работы с зонами и алармами 
  * Хранит в себе заданные границы алармов и соответствующие им колбэки.
  * Границы желтой и красной зон определяются вручную, а диапазон зеленой зоны фактически подстраивается под желтую (или красную если желтая не определена).
  * 
