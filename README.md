@@ -25,10 +25,10 @@
 - Проверка зоны измерений: значения с датчика сверяются с зонами измерений, настраиваемые пользователем. Если значение выходит за пределы заданных зон, это активировать соответствующие реакции в виде коллбэков.
 
 Набор классов, обеспечивающих функционал датчика делитcя на такие части: 
-- Основная, которая состоит из ветки классов [ClassAncestorSensor](https://github.com/Nicktonious/ModuleAppError/blob/fork-nikita/README_ANCESTOR.md) и [ClassMiddleSensor](https://github.com/Nicktonious/ModuleAppError/blob/fork-nikita/README_MIDDLE.md), хранящих в себе поля и методы, общие для всех датчиков. Реализация класса конкретного датчика выполняется наследованием от **ClassMiddleSensor**;
+- Основная, которая состоит из ветки классов [ClassAncestorSensor](https://github.com/Nicktonious/ModuleSensor/blob/fork-nikita/README_ANCESTOR.md) и [ClassMiddleSensor](https://github.com/Nicktonious/ModuleSensor/blob/fork-nikita/README_MIDDLE.md), хранящих в себе поля и методы, общие для всех датчиков. Реализация класса конкретного датчика выполняется наследованием от **ClassMiddleSensor**;
 - Сервисная: 
-    - [ClassDataRefine](https://github.com/Nicktonious/ModuleAppError/blob/fork-nikita/README_DATA_REFINE.md) реализует математико-логический аппарат для обработки и корректировки поступаемых значений;
-    - [ClassAlarms](https://github.com/Nicktonious/ModuleAppError/blob/fork-nikita/README_ALARMS.md) добавляет поддержку зон измерения и алармов;  
+    - [ClassDataRefine](https://github.com/Nicktonious/ModuleSensor/blob/fork-nikita/README_DATA_REFINE.md) реализует математико-логический аппарат для обработки и корректировки поступаемых значений;
+    - [ClassAlarms](https://github.com/Nicktonious/ModuleSensor/blob/fork-nikita/README_ALARMS.md) добавляет поддержку зон измерения и алармов;  
 - Прикладная - класс, отвечающий за отдельно взятый канал датчика. Этот класс реализуется вне данного стека.
 <div style = "color: #555">
 
