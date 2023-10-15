@@ -1,6 +1,11 @@
 <div style = "font-family: 'Open Sans', sans-serif; font-size: 16px">
 
-## ClassDataRefine
+# ClassDataRefine
+<div style = "color: #555">
+    <p align="center">
+    <img src="./res/logo.png" width="400" title="hover text">
+    </p>
+</div>
 
 ### Описание
 <div style = "color: #555">
@@ -28,7 +33,7 @@
 - <mark style="background-color: lightblue">SetTransmissionOut(_k, _b)</mark> - устанавливает коэффициенты k и b трансформирующей функции канала;
 - <mark style="background-color: lightblue">TransformOutValue(val)</mark> - возвращает значение, прошедшее через коэффициенты трансформирующей функции.
 
-<div align='center'>
+<div align='left'>
     <img src="./res/math.png" alt="Image not found">
 </div>
 </div>
@@ -36,7 +41,7 @@
 ### Обработка значений с датчика
 <div style = "color: #555">
 
-<div align='center'>
+<div align='left'>
     <img src="./res/data_transformation.png" alt="Image not found">
 </div>
 </div>
