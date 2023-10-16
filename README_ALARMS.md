@@ -44,7 +44,7 @@
 - при повторном вызове `SetZones()` проверка значений на валидность происходит таким образом: 
     1. новые значения желтой/красной зон сверяются со значениями красной/желтой зон если такие также были переданы
     2. если же была передана только красная либо желтая зона, то ее значения сверяются со значениями зон, указанными прежде. 
-- коллбэки при вызове получают как аргумет значение предыдущей зоны.
+- коллбэки при вызове получают как аргумет ссылку на объект канала и на значение предыдущей зоны.
 
 ```js
 //Установка всех зон сразу
@@ -58,11 +58,11 @@ ch0._Alarms.SetZones({
     yellow: {           //Желтая зона
         low:   -50, 
         high:   50, 
-        cbLow:  (prev) => { console.log('L_YELLOW'); }, 
-        cbHigh: (prev) => { console.log('H_YELLOW'); } 
+        cbLow:  (ch, prev) => { console.log('L_YELLOW ' + ch.Value); }, 
+        cbHigh: (ch, prev) => { console.log('H_YELLOW ' + ch.Value); } 
     },
     green: {            //Зеленая зона
-        cb:     (prev) => { console.log(`Left ${prev} zone, now in GREEN zone`); } 
+        cb:     (ch, prev) => { console.log(`Left ${prev} zone, now in GREEN zone`); } 
     }
 });
 
@@ -80,7 +80,7 @@ ch1._Alarms.SetZones({
 
 ch1._Alarms.SetZones({
     green: {            //Зеленая зона
-        cb: (prevZone) => { console.log(`Left ${prevZone}, now GREEN zone`); } 
+        cb: (ch, prevZone) => { console.log(`Left ${prevZone}, now GREEN zone`); } 
     }
 });
 ```

@@ -88,38 +88,44 @@ ch1._DataRefine.SetTransmissionOut(0.1, 0);
 //Установка для 1-го канала ограничителей в 0.5 и 20 см
 ch0._DataRefine.SupressOutValue(0.5, 20);
 //Установка глубины фильтрации для 0-го канала
-ch0._DataRefine.SetFilterDepth(5);
+ch1._DataRefine.SetLim(0.5, 20);
+//Установка глубины фильтрации для 0-го канала
+ch0.SetFilterDepth(5);
 
 ch1._Alarms.SetZones({
     red: {
         low:    5, 
-        high:   15, 
-        cbLow:  () => { console.log('OBSTACLE VERY CLOSE'); }, 
-        cbHigh: () => { console.log('OBSTACLE NEAR'); }
+        high:   19,
+        cbLow:  (ch) => { console.log(`AN OBSTACLE IS VERY CLOSE: ${ch.Value} cm`); }, 
+        cbHigh: (ch) => {  console.log(`NO OBSTACLE AHEAD`); }
     },
     green: {
-        cb: () =>     { console.log('NO OBSTACLES AHEAD')}
+        cb: (ch) =>     { console.log(`AN OBSTACLE IS CLOSE: ${ch.Value}`); }
     }
-})
-//Запуск опроса обоих канала
+});
+
+// Запуск опроса обоих канала
 ch0.Start();
 ch1.Start();
 
 //Вывод показаний с датчика раз в 1 сек.
-setInterval(() => {
+let interv = setInterval(() => {
     if (ch0.IsUsed)
-        console.log(ch0.Value + " lux");
+        console.log(`${(ch0.Value).toFixed(1)} lux`);
     if (ch1.IsUsed)
-        console.log(ch1.Value + " cm");
+        console.log(`${(ch1.Value).toFixed(1)}  cm`);
 }, 1000);
 
 //Прекращение опроса 0-го канала через 5 сек.
 setTimeout(() => {
     ch0.Stop();
-}, 5000);
+    console.log("ch0 stopped");
+}, 3000);
 //Прекращение опроса 1-го канала через 10 сек.
 setTimeout(() => {
     ch1.Stop();
+    console.log("ch1 stopped");
+    clearInterval(interv);
 }, 10000);
 ```
 
