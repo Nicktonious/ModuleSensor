@@ -93,7 +93,7 @@ ch0._DataRefine.SetFilterDepth(5);
 ch1._Alarms.SetZones({
     red: {
         low:    5, 
-        high:   Infinity, 
+        high:   15, 
         cbLow:  () => { console.log('OBSTACLE VERY CLOSE'); }, 
         cbHigh: () => { console.log('OBSTACLE NEAR'); }
     },
