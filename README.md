@@ -32,7 +32,12 @@
     - [ClassDataRefine](./README_DATA_REFINE.md) реализует математико-логический аппарат для обработки и корректировки поступаемых значений;
     - [ClassAlarms](./README_ALARMS.md) добавляет поддержку зон измерения и алармов;  
 - Прикладная - класс, отвечающий за отдельно взятый канал датчика. Этот класс реализуется вне данного стека.
-<div style = "color: #555">
+
+<div align='left'>
+    <img src="./res/main-diagram.png" alt="Image not found">
+</div>
+
+</div>
 
 ### Примеры
 <div style = "color: #555">
