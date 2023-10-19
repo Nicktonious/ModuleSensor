@@ -50,4 +50,10 @@
 
 </div>
 
+### Зависимости
+<div style = "color: #555">
+
+- <mark style="background-color: lightblue">[**ClassAppError**](https://github.com/Konkery/ModuleAppError/blob/main/README.md)</mark>
+</div>
+
 </div>

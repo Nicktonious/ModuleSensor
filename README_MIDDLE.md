@@ -53,4 +53,10 @@
 - <mark style="background-color: lightblue">Write(_reg, _val)</mark> - обязывает реализовать запись в регистр.
 </div>
 
+### Зависимости
+<div style = "color: #555">
+
+- <mark style="background-color: lightblue">[**ClassAppError**](https://github.com/Konkery/ModuleAppError/blob/main/README.md)</mark>
+</div>
+
 </div>

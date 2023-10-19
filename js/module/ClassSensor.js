@@ -19,7 +19,7 @@ class ClassAncestorSensor {
      * @typedef SensorOptsType
      * @property {any} bus - шина
      * @property {[Pin]} pins - массив пинов
-     * @property {Number} [address] - адресс устрйоства на шине
+     * @property {Number} [address] - адресс устройства на шине
      */
     /**
      * @constructor
