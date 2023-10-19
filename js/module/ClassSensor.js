@@ -323,7 +323,7 @@ class ClassChannelSensor {
 class ClassDataRefine {
     constructor() {
         this._Values = [];  //[ 0 : outLimLow, 1: outLimHigh 2: _k, 3: _b ]
-        this._FilterFunc = arr => arr.reduce((curr, pr) => curr + pr, 0) / arr.length;
+        this._FilterFunc = arr => arr[arr.length-1];
 
         this.SetLim(-Infinity, Infinity);
         this.SetTransformFunc(1, 0);
@@ -335,6 +335,10 @@ class ClassDataRefine {
      * @returns 
      */
     SetFilterFunc(_func) {
+        if (!_func) {        //если _func не определен, то устанавливается функция-фильтр по-умолчанию
+            this._FilterFunc = arr => arr[arr.length-1];
+            return true;
+        }
         if (typeof _func !== 'function') throw new Error('Not a function');
         this._FilterFunc = _func;
         return true;
