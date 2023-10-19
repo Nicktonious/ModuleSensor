@@ -21,17 +21,17 @@
 <div style = "color: #555">
 
 - <mark style="background-color: lightblue">_Values</mark> - массив с используемыми коэффициентами;
-- <mark style="background-color: lightblue">_FilterFunc</mark> - функция которая вызывается из ClassMiddleSensor и применяется для фильтрации значений. По умолчанию фильтр-функция по умолчанию возвращает усредненное значение;
+- <mark style="background-color: lightblue">_FilterFunc</mark> - функция которая вызывается из ClassMiddleSensor и применяется для фильтрации значений. Принимает в качестве аргумента массив значений и возвращает одно число. По умолчанию фильтр-функция возвращает последнее значение;
 </div>
 
 ### Методы
 <div style = "color: #555">
 
-- <mark style="background-color: lightblue">SetFilterFunc(_func)</mark> - устанавливает фильтрующую функцию для канала;
+- <mark style="background-color: lightblue">SetFilterFunc(_func)</mark> - устанавливает фильтрующую функцию для канала. Вызов данного метода без передачи в него аргумента установит функцию по-умолчанию;
 - <mark style="background-color: lightblue">SetOutLim(_limLow, _limHigh)</mark> - устанавливает значения ограничителей входных значений;
-- <mark style="background-color: lightblue">SupressOutValue(val)</mark> - устанавливает значения ограничителей супрессорной функции;
+- <mark style="background-color: lightblue">SupressOutValue(val)</mark> - возвращает число, прошедшее через супрессорную функцию;
 - <mark style="background-color: lightblue">SetTransmissionOut(_k, _b)</mark> - устанавливает коэффициенты k и b трансформирующей функции канала;
-- <mark style="background-color: lightblue">TransformOutValue(val)</mark> - возвращает значение, прошедшее через коэффициенты трансформирующей функции.
+- <mark style="background-color: lightblue">TransformOutValue(val)</mark> - возвращает значение, прошедшее через трансформирующую функцию.
 
 <div align='left'>
     <img src="./res/math.png" alt="Image not found">
