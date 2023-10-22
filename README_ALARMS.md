@@ -29,7 +29,7 @@
 
 ### Методы
 <div style = "color: #555">
-
+- <mark style="background-color: lightblue">Init(opts)</mark> - устанавливает значения полей класса по-умолчанию;
 - <mark style="background-color: lightblue">SetZones(opts)</mark> - задает зоны измерения и их функции-обработчики
 - <mark style="background-color: lightblue">CheckZone(opts)</mark> - обновляет значение текущей зоны измерения по переданному значению и, если зона сменилась, вызывает её колбэк.
 </div>
@@ -41,10 +41,11 @@
 Правила, задания значений:
 - red.low < yellow.low
 - red.high > yellow.high
-- при повторном вызове `SetZones()` проверка значений на валидность происходит таким образом: 
+- при повторном вызове `SetZones(opts)` проверка значений на валидность происходит таким образом: 
     1. новые значения желтой/красной зон сверяются со значениями красной/желтой зон если такие также были переданы
     2. если же была передана только красная либо желтая зона, то ее значения сверяются со значениями зон, указанными прежде. 
-- коллбэки при вызове получают как аргумет ссылку на объект канала и на значение предыдущей зоны.
+- коллбэки при вызове получают как аргумет ссылку на объект канала и на значение предыдущей зоны;
+- вызов `SetZones()` без передачи аргумента сбрасывает все установленные ранее зоны.
 
 #### Установка всех зон сразу
 ```js
@@ -91,7 +92,7 @@ ch1._Alarms.SetZones({
 ### Зависимости
 <div style = "color: #555">
 
-- <mark style="background-color: lightblue">[**ClassAppError**](https://github.com/Konkery/ModuleAppError/blob/main/README.md)</mark>
+- <mark style="background-color: lightblue">[ClassAppError](https://github.com/Konkery/ModuleAppError/blob/main/README.md)</mark>
 </div>
 
 </div>

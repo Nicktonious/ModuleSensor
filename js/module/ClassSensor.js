@@ -5,7 +5,7 @@
  * @property {[String]} channelNames
  * @property {String} typeInSignal
  * @property {String} typeOutSignal
- * @property {String} busType
+ * @property {[String]} busTypes
  * @property {Object} manufacturingData
  */
 
@@ -24,7 +24,7 @@ class ClassAncestorSensor {
     /**
      * @constructor
      * @param {SensorPropsType} _sensor_props - объект с описательными характеристиками датчика, который передается в метод InitSensProperties
-     * @param {SensorOptsType} _opts - объект который содержит минимальный набор параметров, необхходимых для обеспечения работы датчика
+     * @param {SensorOptsType} _opts - объект который содержит минимальный набор параметров, необходимых для обеспечения работы датчика
      */
     constructor(_sensor_props, _opts) { 
         if (_opts.pins) _opts.pins.forEach(pin => {
@@ -399,6 +399,13 @@ const indexes = { redLow: 0, yelLow: 1, green: 2, yelHigh: 3, redHigh: 4 };
 class ClassAlarms {
     constructor(_channel) {
         this._Channel = _channel;
+        this.Init();
+    }
+    /**
+     * @method
+     * Устанавливает значения полей класса по-умолчанию
+     */
+    Init() {
         this._Zones = [];
         this._Callbacks = new Array(5).fill((ch, z) => {});
         this._CurrZone = 'green';
@@ -420,7 +427,7 @@ class ClassAlarms {
 
         if (opts.yellow) {
             if (opts.red) {
-                if (opts.yellow.low <= opts.red.low || opts.yellow.high >= opts.red.high) throw new Error('Invalid args');
+                if (opts.yellow.low < opts.red.low || opts.yellow.high > opts.red.high) throw new Error('Invalid args');
             }
             else if (opts.yellow.low < this._Zones[indexes.redLow] || opts.yellow.high > this._Zones[indexes.redHigh]) throw new Error('Invalid args');
             this._Zones[indexes.yelLow] = opts.yellow.low;
@@ -430,7 +437,7 @@ class ClassAlarms {
         }
         if (opts.red) {
             if (opts.yellow) {
-                if (opts.red.low >= opts.yellow.low || opts.red.high <= opts.yellow.high) throw new Error('Invalid args');
+                if (opts.red.low > opts.yellow.low || opts.red.high < opts.yellow.high) throw new Error('Invalid args');
             }
             else if (opts.red.low > this._Zones[indexes.yelLow] || opts.red.high < this._Zones[indexes.yelHigh]) throw new Error('Invalid args');
             this._Zones[indexes.redLow] = opts.red.low;
