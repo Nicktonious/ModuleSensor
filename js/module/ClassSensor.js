@@ -148,6 +148,7 @@ class ClassMiddleSensor extends ClassAncestorSensor {
             defineAccessors(i);
         }
         this._IsChUsed[i] = false;
+        this._IsChAvailable[i] = true;
     }
     /**
      * @method
