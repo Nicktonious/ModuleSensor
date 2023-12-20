@@ -78,6 +78,7 @@ class ClassMiddleSensor extends ClassAncestorSensor {
         this._Values = [];
         this._Channels = [];
         this._IsChUsed = [];
+        this._IsChAvailable = [];
 
         this.InitChannels();
     }
@@ -111,6 +112,7 @@ class ClassMiddleSensor extends ClassAncestorSensor {
         const defineAccessors = i => {
             Object.defineProperty(this, `Ch${i}_Value`, {       //определяем геттеры и сеттеры по шаблону "Ch0_Value", "Ch1_Value" ...
                 get: () => {
+                    if (!this._IsChAvailable[i]) return Number.MAX_SAFE_INTEGER;
                     return this._Channels[i]._DataRefine._FilterFunc(this._Values[i]._arr);
                 },
                 set: val => {
@@ -256,6 +258,12 @@ class ClassChannelSensor {
     get ID() { return this._ThisSensor._Name + this._NumChannel; }
 
     get IsUsed() { return this._ThisSensor._IsChUsed[this._NumChannel]; }
+    /**
+     * @getter
+     * Указывает, можно ли в данный момент работать с каналом сенсора
+     * @returns {Boolean}
+     */
+    get IsAvailable() { return this._ThisSensor._IsChAvailable[this._NumChannel]; }
 
     /**
      * @method
