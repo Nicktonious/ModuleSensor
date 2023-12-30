@@ -81,7 +81,10 @@ class ClassMiddleSensor extends ClassAncestorSensor {
         this._IsChAvailable = [];
 
         this.InitChannels();
+
+        Object.emit('new-device', this);
     }
+    get Id() { return 'some id'; }
     /**
      * @getter
      * Возвращает количество инстанцированных объектов каналов датчика.
@@ -146,9 +149,10 @@ class ClassMiddleSensor extends ClassAncestorSensor {
                 }
             };
             defineAccessors(i);
+
+            this._IsChUsed[i] = false;
+            this._IsChAvailable[i] = true;
         }
-        this._IsChUsed[i] = false;
-        this._IsChAvailable[i] = true;
     }
     /**
      * @method
@@ -189,7 +193,7 @@ class ClassMiddleSensor extends ClassAncestorSensor {
      * Метод обязывающий выполнить дополнительную конфигурацию датчика. Это может быть настройка пина прерывания, периодов измерения и прочих шагов, которые в общем случае необходимы для работы датчика, но могут переопределяться в процессе работы, и потому вынесены из метода Init() 
      * @param {Object} [_opts] - объект с конфигурационными параметрами
      */
-    ConfigureRegs(_opts) { }
+    Configure(_opts) { }
     /**
      * @method
      * Метод обязывающий выполнить перезагрузку датчика
@@ -256,7 +260,7 @@ class ClassChannelSensor {
      * @getter
      * Возвращает уникальный идентификатор канала
      */
-    get ID() { return this._ThisSensor._Name + this._NumChannel; }
+    get Id() { return this._ThisSensor._Name + this._NumChannel; }
 
     get IsUsed() { return this._ThisSensor._IsChUsed[this._NumChannel]; }
     /**
@@ -321,8 +325,8 @@ class ClassChannelSensor {
      * Метод обязывающий выполнить конфигурацию датчика либо значениями по умолчанию, либо согласно параметру _opts 
      * @param {Object} _opts - объект с конфигурационными параметрами
      */
-    ConfigureRegs(_opts) {
-        return this._ThisSensor.ConfigureRegs.apply(this._ThisSensor, Array.from(arguments));
+    Configure(_opts) {
+        return this._ThisSensor.Configure.apply(this._ThisSensor, Array.from(arguments));
     }
 }
 /**
