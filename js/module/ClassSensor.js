@@ -1,5 +1,7 @@
 /**
  * @typedef SensorPropsType - объект хранящий описательные характеристики датчика
+ * @property {String} id
+ * @property {String} article
  * @property {String} name
  * @property {String} type
  * @property {[String]} channelNames
@@ -19,20 +21,24 @@ class ClassAncestorSensor {
      * @typedef SensorOptsType
      * @property {any} bus - шина
      * @property {[Pin]} pins - массив пинов
-     * @property {Number} [address] - адресс устройства на шине
+     * @property {Number} [address] - адрес устройства на шине
      */
     /**
      * @constructor
      * @param {SensorPropsType} _sensor_props - объект с описательными характеристиками датчика, который передается в метод InitSensProperties
      * @param {SensorOptsType} _opts - объект который содержит минимальный набор параметров, необходимых для обеспечения работы датчика
      */
-    constructor(_sensor_props, _opts) { 
+    constructor(_opts, _sensor_props) { 
+        // Process.GetDevicesConfig()[_sensor_props.id] = 
         if (_opts.pins) _opts.pins.forEach(pin => {
             if (!(+Pin(pin))) throw new Error('Not a pin');
         });
         
+        if (!SensorManager.IsIDUnique(_sensor_props.id)) throw new Error('Id is already used');
+        if (_opts.pins && !SensorManager.ArePinsAvailable(_opts.pins)) throw new Error('Pins are already used');
+
         this._Bus = _opts.bus;
-        this._Pins = _opts.pins;
+        this._Pins = _opts.pins || [];
         if (typeof _opts.address == 'number') this._Address = _opts.address;
 
         this.InitSensProperties(_sensor_props);
@@ -42,26 +48,56 @@ class ClassAncestorSensor {
      * Метод инициализирует поля, хранящие описательные характеристики датчика.
      * @param {SensorPropsType} sensor_props 
      */
-    InitSensProperties(sensor_props) { 
-        const changeNotation = str => `_${str[0].toUpperCase()}${str.substr(1)}`;       //converts "propName" -> "_PropName"
+    InitSensProperties(_sensorProps) { 
+        this._Id                = _sensorProps.id;
+        this._Article           = _sensorProps.article;
+        this._QuantityChannel   = _sensorProps.quantityChannel;
+        this._Name              = _sensorProps.name
+        this._Type              = _sensorProps.type;
+        this._MinRange          = _sensorProps.minRange;
+        this._MaxRange          = _sensorProps.maxRange;
+        this._TypeInSignal      = _sensorProps.typeInSignal;
+        this._TypeOutSignal     = _sensorProps.typeOutSignal;
+        this._ChannelNames      = _sensorProps.channelNames;
+        this._BusTypes          = _sensorProps.busTypes;
+        this._ManufacturingData = _sensorProps.manufacturingData || {};
+        
+        const isStrArr = (arr) => {
+            if (Array.isArray(arr)) {
+                return arr.every(i => typeof i === 'string');
+            }
+            return false;
+        }
 
-        if (typeof sensor_props.quantityChannel !== 'number' || sensor_props.quantityChannel < 1) throw new Error('Invalid QuantityChannel arg ');
-        this._QuantityChannel = sensor_props.quantityChannel;
+        let isValid = {
+            _Id: (p) => typeof p === 'string' && p.length > 0,
+            _Article: (p) =>       !p || typeof p === 'string' && p.length > 0,
+            _Name: (p) =>          !p || typeof p === 'string', 
+            _Type: (p) =>          !p || typeof p === 'string',
+            _QuantityChannel: (p) => typeof p === 'number' && p > 0,
+            _TypeInSignal: (p) =>  !p || typeof p === 'string',
+            _TypeOutSignal: (p) => !p || typeof p === 'string',
+            _ChannelNames: (p) =>  !p || isStrArr(p),
+            _BusTypes: (p) =>      !p || Array.isArray(p),
+            _MinRange: (p) => {
+                return (!p || (Array.isArray(p) && typeof p[0] === 'number' && typeof p[1] === 'number'));
+            },
+            _MaxRange: (p) => {
+                return (!p || (Array.isArray(p) && typeof p[0] === 'number' && typeof p[1] === 'number'));
+            },
+            _ManufacturingData: (p) => !p || typeof p === 'object'
+        };
 
-        ['name', 'type', 'typeInSignal', 'typeOutSignal', 'channelNames', 'busTypes']
-            .forEach(prop => {
-                if (sensor_props[prop] instanceof Array) {
-                    sensor_props[prop].forEach(elem => {
-                        if (typeof elem !== 'string') throw new Error('Incorrect sensor property');
-                    });
-                }
-                else if (typeof sensor_props[prop] !== 'string') throw new Error('Incorrect sensor property');
-                this[changeNotation(prop)] = sensor_props[prop];
-            });
-
-        this._ManufacturingData = sensor_props.manufacturingData || {};
+        Object.keys(isValid).forEach(propName => {
+            if (!isValid[propName](this[propName])) throw new Error(`Invalid prop: ${propName}`);
+        });
     }
 }
+const SensorStatus = {
+    OFF: 0,
+    WORKING: 1,
+    TRANSITION: 2
+};
 /**
  * @class
  * Класс, который закладывает в будущие классы датчиков поля и методы, необходимые для унификации хранения данных, связанных с отдельными 
@@ -73,21 +109,35 @@ class ClassMiddleSensor extends ClassAncestorSensor {
      * @param {SensorPropsType} _sensor_props 
      * @param {SensorOptsType} _opts
      */
-    constructor(_sensor_props, _opts) {
-        ClassAncestorSensor.apply(this, [_sensor_props, _opts]);
+    constructor(_opts, _sensor_props) {
+        ClassAncestorSensor.apply(this, [_opts, _sensor_props]);
+        
         this._Values = [];
         this._Channels = [];
         this._IsChUsed = [];
         this._IsChAvailable = [];
+        this._ChStatus = [];
 
         this.InitChannels();
 
-        Object.emit('new-device', this);
+        //SensorManager.AddDevice(this);
+        // Object.emit('new-device', this);
     }
-    get Id() { return 'some id'; }
+    static get SensorStatus() {
+        return SensorStatus;
+    }
+    // get Status() {
+    //     return this._Status;
+    // }
+    // set Status(_status) {
+    //     if (Object.values(SensorStatus).includes(_status)) {
+    //         this._Status = _status;
+    //     }
+    // }
+    get ID() { return this._Id; }
     /**
      * @getter
-     * Возвращает количество инстанцированных объектов каналов датчика.
+     * Возвращает количество созданных объектов каналов датчика.
      */
     get CountChannels() {
         return this._Channels.filter(o => o instanceof ClassChannelSensor).length;
@@ -115,8 +165,10 @@ class ClassMiddleSensor extends ClassAncestorSensor {
         const defineAccessors = i => {
             Object.defineProperty(this, `Ch${i}_Value`, {       //определяем геттеры и сеттеры по шаблону "Ch0_Value", "Ch1_Value" ...
                 get: () => {
-                    if (!this._IsChAvailable[i]) return Number.MAX_SAFE_INTEGER;
                     return this._Channels[i]._DataRefine._FilterFunc(this._Values[i]._arr);
+                    // if (this._ChStatus[i] === 1) 
+                    //     return this._Channels[i]._DataRefine._FilterFunc(this._Values[i]._arr);
+                    // return 0;
                 },
                 set: val => {
                     this._Values[i]._rawVal = val;
@@ -131,11 +183,9 @@ class ClassMiddleSensor extends ClassAncestorSensor {
         }
 
         for (let i = 0; i < this._QuantityChannel; i++) {
-            try {
-                this._Channels[i] = new ClassChannelSensor(this, i);  // инициализируем и сохраняем объекты каналов
-            } catch (e) {
-                this._Channels[i] = null;
-            }
+            
+            this._Channels[i] = new ClassChannelSensor(this, i);  // инициализируем и сохраняем объекты каналов
+
             this._Values[i] = {
                 _depth : 1,
                 _rawVal : undefined,
@@ -152,6 +202,7 @@ class ClassMiddleSensor extends ClassAncestorSensor {
 
             this._IsChUsed[i] = false;
             this._IsChAvailable[i] = true;
+            this._ChStatus[i] = 0;
         }
     }
     /**
@@ -162,7 +213,7 @@ class ClassMiddleSensor extends ClassAncestorSensor {
     Init(_opts) { }
     /**
      * @method
-     * Метод обязывает запустить циклический опрос определенного канала датчика с заданной периодичностью в мс. Переданное значение периода должно сверяться с минимальным значением для данного канала и, если требуется, регулироваться, так как максимальная частота опроса зависит от характеристик датичка. 
+     * Метод обязывает запустить циклический опрос определенного канала датчика с заданной периодичностью в мс. Переданное значение периода должно сверяться с минимальным значением для данного канала и, если требуется, регулироваться, так как максимальная частота опроса зависит от характеристик датчика. 
      * 
      * В некоторых датчиках считывание значений с нескольких каналов происходит неразрывно и одновременно. В таких случаях ведется только один циклический опрос, а повторный вызов метода Start() для конкретного канала лишь определяет, будет ли в процессе опроса обновляться значение данного канала.
      * 
@@ -183,9 +234,9 @@ class ClassMiddleSensor extends ClassAncestorSensor {
     Stop(_ch_num) { }
     /**
      * @method
-     * Метод обязывает останавливить опрос указанного канала и запустить его вновь с уже новой частотой. Возобновиться должно обновление всех каналов, которые опрашивались перед остановкой.  
+     * Метод обязывает остановить опрос указанного канала и запустить его вновь с уже новой частотой. Возобновиться должно обновление всех каналов, которые опрашивались перед остановкой.  
      * @param {Number} _ch_num - номер канала, частота опроса которого изменяется
-     * @param {Number} _period - новый вериод опроса
+     * @param {Number} _period - новый период опроса
      */
     ChangeFreq(_ch_num, _period) { }
     /**
@@ -243,13 +294,15 @@ class ClassChannelSensor {
      * @param {Number} num - номер канала
      */
     constructor(sensor, num) {
-        if (sensor._Channels[num] instanceof ClassChannelSensor) return sensor._Channels[num];    //если объект данного канала однажды уже был иницииализирован, то вернется ссылка, хранящаяся в объекте физического сенсора  
+        if (sensor._Channels[num] instanceof ClassChannelSensor) return sensor._Channels[num];    //если объект данного канала однажды уже был создан, то вернется ссылка, хранящаяся в объекте физического сенсора  
 
         this._ThisSensor = sensor;          //ссылка на объект физического датчика
         this._NumChannel = num;             //номер канала (начиная с 1)
         this._DataRefine = new ClassDataRefine();
         this._Alarms = new ClassAlarms(this);
         sensor._Channels[num] = this;
+
+        this.Status = 0;
     }
     /**
      * @getter
@@ -260,7 +313,7 @@ class ClassChannelSensor {
      * @getter
      * Возвращает уникальный идентификатор канала
      */
-    get Id() { return this._ThisSensor._Name + this._NumChannel; }
+    get ID() { return `${this._ThisSensor.ID}-${('0'+this._ThisSensor._QuantityChannel).slice(-2)}-${('0'+this._NumChannel).slice(-2)}`; }
 
     get IsUsed() { return this._ThisSensor._IsChUsed[this._NumChannel]; }
     /**
@@ -269,10 +322,18 @@ class ClassChannelSensor {
      * @returns {Boolean}
      */
     get IsAvailable() { return this._ThisSensor._IsChAvailable[this._NumChannel]; }
+    
+    get Status() {
+        return this._ThisSensor._ChStatus[this._NumChannel];
+    }
 
+    set Status(_status) {
+        if (Object.keys(SensorStatus).find(k => SensorStatus[k] === _status)) 
+            this._ThisSensor._ChStatus[this._NumChannel] = _status;
+    }
     /**
      * @method
-     * Метод обязывает запустить циклический опрос определенного канала датчика с заданной периодичностью в мс. Переданное значение периода должно сверяться с минимальным значением для данного канала и, если требуется, регулироваться, так как максимальная частота опроса зависит от характеристик датичка. 
+     * Метод обязывает запустить циклический опрос определенного канала датчика с заданной периодичностью в мс. Переданное значение периода должно сверяться с минимальным значением для данного канала и, если требуется, регулироваться, так как максимальная частота опроса зависит от характеристик датчика. 
      * 
      * В некоторых датчиках считывание значений с нескольких каналов происходит неразрывно и одновременно. В таких случаях ведется только один циклический опрос, а повторный вызов метода Start() для конкретного канала лишь определяет, будет ли в процессе опроса обновляться значение данного канала.
      * 
@@ -293,7 +354,7 @@ class ClassChannelSensor {
     Stop() { return this._ThisSensor.Stop(this._NumChannel); }
     /**
      * @method
-     * Останавивает цикл, ответственный за опрос указанного канала и запускает его вновь с уже новой частотой. Возобновиться должно обновление всех каналов, которые опрашивались перед остановкой.  
+     * Останавливает цикл, ответственный за опрос указанного канала и запускает его вновь с уже новой частотой. Возобновиться должно обновление всех каналов, которые опрашивались перед остановкой.  
      * @param {Number} _period 
      */
     ChangeFreq(_period) { return this._ThisSensor.ChangeFreq.call(this._ThisSensor, Array.from(arguments)); }
@@ -365,7 +426,7 @@ class ClassDataRefine {
     SetLim(_limLow, _limHigh) {
         if (typeof _limLow !== 'number' || typeof _limHigh !== 'number') throw new Error('Not a number');
 
-        if (_limLow >= _limHigh) throw new Error('limLow value shoud be less than limHigh');
+        if (_limLow >= _limHigh) throw new Error('limLow value should be less than limHigh');
         this._Values[0] = _limLow;
         this._Values[1] = _limHigh;
         return true;
@@ -429,7 +490,7 @@ class ClassAlarms {
      * @param {Object} opts 
      */
     SetZones(opts) {
-        const checkParams = {   // объект в котором каждой задаваемой зоне соответсвует функция, которая возвращает true если параметры, зад зоны валидны
+        const checkParams = {   // объект в котором каждой задаваемой зоне соответствует функция, которая возвращает true если параметры, зад зоны валидны
             green: () => (typeof opts.green.cb === 'function'),
             yellow: () => (opts.yellow.low < opts.yellow.high),
             red: () => (opts.red.low < opts.red.high)
