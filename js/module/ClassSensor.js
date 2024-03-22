@@ -72,7 +72,7 @@ class ClassAncestorSensor {
         let isValid = {
             _Id: (p) => typeof p === 'string' && p.length > 0,
             _Article: (p) =>       !p || typeof p === 'string' && p.length > 0,
-            _Name: (p) =>          !p || typeof p === 'string', 
+            _Name: (p) =>          typeof p === 'string', 
             _Type: (p) =>          !p || typeof p === 'string',
             _QuantityChannel: (p) => typeof p === 'number' && p > 0,
             _TypeInSignal: (p) =>  !p || typeof p === 'string',
@@ -119,9 +119,6 @@ class ClassMiddleSensor extends ClassAncestorSensor {
         this._ChStatus = [];
 
         this.InitChannels();
-
-        //SensorManager.AddDevice(this);
-        // Object.emit('new-device', this);
     }
     static get SensorStatus() {
         return SensorStatus;
