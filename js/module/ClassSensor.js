@@ -72,7 +72,7 @@ class ClassAncestorSensor {
         let isValid = {
             _Id: (p) => typeof p === 'string' && p.length > 0,
             _Article: (p) =>       !p || typeof p === 'string' && p.length > 0,
-            _Name: (p) =>          typeof p === 'string', 
+            _Name: (p) =>          !p || typeof p === 'string', 
             _Type: (p) =>          !p || typeof p === 'string',
             _QuantityChannel: (p) => typeof p === 'number' && p > 0,
             _TypeInSignal: (p) =>  !p || typeof p === 'string',
@@ -112,25 +112,17 @@ class ClassMiddleSensor extends ClassAncestorSensor {
     constructor(_opts, _sensor_props) {
         ClassAncestorSensor.apply(this, [_opts, _sensor_props]);
         
-        this._Values = [];
         this._Channels = [];
+        this._ChStatus = [];
+
         this._IsChUsed = [];
         this._IsChAvailable = [];
-        this._ChStatus = [];
 
         this.InitChannels();
     }
     static get SensorStatus() {
         return SensorStatus;
     }
-    // get Status() {
-    //     return this._Status;
-    // }
-    // set Status(_status) {
-    //     if (Object.values(SensorStatus).includes(_status)) {
-    //         this._Status = _status;
-    //     }
-    // }
     get ID() { return this._Id; }
     /**
      * @getter
@@ -161,20 +153,8 @@ class ClassMiddleSensor extends ClassAncestorSensor {
          */
         const defineAccessors = i => {
             Object.defineProperty(this, `Ch${i}_Value`, {       //определяем геттеры и сеттеры по шаблону "Ch0_Value", "Ch1_Value" ...
-                get: () => {
-                    return this._Channels[i]._DataRefine._FilterFunc(this._Values[i]._arr);
-                    // if (this._ChStatus[i] === 1) 
-                    //     return this._Channels[i]._DataRefine._FilterFunc(this._Values[i]._arr);
-                    // return 0;
-                },
                 set: val => {
-                    this._Values[i]._rawVal = val;
-                    val = this._Channels[i]._DataRefine.TransformValue(val);
-                    val = this._Channels[i]._DataRefine.SuppressValue(val);
-
-                    this._Values[i].push(val);
-
-                    this._Channels[i]._Alarms.CheckZone(this[`Ch${i}_Value`]);
+                    this._Channels[i].AddRawValue(val);
                 }
             });
         }
@@ -183,23 +163,12 @@ class ClassMiddleSensor extends ClassAncestorSensor {
             
             this._Channels[i] = new ClassChannelSensor(this, i);  // инициализируем и сохраняем объекты каналов
 
-            this._Values[i] = {
-                _depth : 1,
-                _rawVal : undefined,
-                _arr : [],
-            
-                push: function(_val) {
-                    while (this._arr.length >= this._depth) {
-                        this._arr.shift();
-                    }
-                    this._arr.push(_val);
-                }
-            };
             defineAccessors(i);
 
             this._IsChUsed[i] = false;
             this._IsChAvailable[i] = true;
-            this._ChStatus[i] = 0;
+
+            this._ChStatus[i] = SensorStatus.OFF;
         }
     }
     /**
@@ -292,26 +261,42 @@ class ClassChannelSensor {
      */
     constructor(sensor, num) {
         if (sensor._Channels[num] instanceof ClassChannelSensor) return sensor._Channels[num];    //если объект данного канала однажды уже был создан, то вернется ссылка, хранящаяся в объекте физического сенсора  
-
+        this._Value = 0;
         this._ThisSensor = sensor;          //ссылка на объект физического датчика
+        this._ValueBuffer = {
+            _depth : 1,
+            _rawVal : undefined,
+            _arr : [],
+        
+            push: function(_val) {
+                while (this._arr.length >= this._depth) {
+                    this._arr.shift();
+                }
+                this._arr.push(_val);
+            }
+        };
         this._NumChannel = num;             //номер канала (начиная с 1)
         this._DataRefine = new ClassDataRefine();
-        this._Alarms = new ClassAlarms(this);
-        sensor._Channels[num] = this;
-
-        this.Status = 0;
+        this._Alarms = null;
+        this._DataUpdated = false;
+        this._DataWasRead = false;
     }
     /**
      * @getter
      * Возвращает значение канала, хранящееся в основном объекте
      */
-    get Value() { return this._ThisSensor[`Ch${this._NumChannel}_Value`]; }  //вых значение канала
-    /**
-     * @getter
-     * Возвращает уникальный идентификатор канала
-     */
-    get ID() { return `${this._ThisSensor.ID}-${('0'+this._ThisSensor._QuantityChannel).slice(-2)}-${('0'+this._NumChannel).slice(-2)}`; }
+    get Value() { // вых значение канала
+        this._DataUpdated = false;
+        if (this._DataWasRead) return this._Value;
 
+        this._DataWasRead = true;
+        this._Value = this._DataRefine._FilterFunc(this._ValueBuffer._arr.map(val => {
+            val = this._DataRefine.TransformValue(val);
+            val = this._DataRefine.SuppressValue(val);
+            return val;
+        }));
+        return this._Value;
+    }
     get IsUsed() { return this._ThisSensor._IsChUsed[this._NumChannel]; }
     /**
      * @getter
@@ -319,15 +304,37 @@ class ClassChannelSensor {
      * @returns {Boolean}
      */
     get IsAvailable() { return this._ThisSensor._IsChAvailable[this._NumChannel]; }
+    /**
+     * @method
+     * Инициализирует ClassAlarms в полях объекта.  
+     */ 
+    EnableAlarms() {
+        this._Alarms = new ClassAlarms(this);
+        if (!this.Alarms) Object.defineProperty(this, 'Alarms', { 
+            get: () => this._Alarms
+        });
+    }
+    /**
+     * @method
+     * Добавляет сырое значение с датчика в буфер  
+     * @param {Number} val 
+     */
+    AddRawValue(val) {
+        this._ValueBuffer.push(val);
+        this._DataUpdated = true;
+        this._DataWasRead = false;
+        if (this._Alarms) this._Alarms.CheckZone(this.Value);
+    }
+    /**
+     * @getter
+     * Возвращает уникальный идентификатор канала
+     */
+    get ID() { return `${this._ThisSensor.ID}-${('0'+this._ThisSensor._QuantityChannel).slice(-2)}-${('0'+this._NumChannel).slice(-2)}`; }
     
     get Status() {
         return this._ThisSensor._ChStatus[this._NumChannel];
     }
-
-    set Status(_status) {
-        if (Object.keys(SensorStatus).find(k => SensorStatus[k] === _status)) 
-            this._ThisSensor._ChStatus[this._NumChannel] = _status;
-    }
+    get DataRefine() { return this._DataRefine; }
     /**
      * @method
      * Метод обязывает запустить циклический опрос определенного канала датчика с заданной периодичностью в мс. Переданное значение периода должно сверяться с минимальным значением для данного канала и, если требуется, регулироваться, так как максимальная частота опроса зависит от характеристик датчика. 
@@ -366,7 +373,7 @@ class ClassChannelSensor {
      * @param {Number} _depth 
     */
     SetFilterDepth(_depth) {
-        this._ThisSensor._Values[this._NumChannel]._depth = _depth;
+        this._ValueBuffer._depth = _depth;
     }
     /**
      * @method

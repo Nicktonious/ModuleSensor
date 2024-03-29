@@ -28,8 +28,8 @@
 <div style = "color: #555">
 
 - <mark style="background-color: lightblue">SetFilterFunc(_func)</mark> - устанавливает фильтрующую функцию для канала. Вызов данного метода без передачи в него аргумента установит функцию по-умолчанию;
-- <mark style="background-color: lightblue">SetOutLim(_limLow, _limHigh)</mark> - устанавливает значения ограничителей входных значений;
-- <mark style="background-color: lightblue">SupressOutValue(val)</mark> - возвращает число, прошедшее через супрессорную функцию;
+- <mark style="background-color: lightblue">SetLim(_limLow, _limHigh)</mark> - устанавливает значения ограничителей входных значений;
+- <mark style="background-color: lightblue">SuppressOutValue(val)</mark> - возвращает число, прошедшее через супрессорную функцию;
 - <mark style="background-color: lightblue">SetTransmissionOut(_k, _b)</mark> - устанавливает коэффициенты k и b трансформирующей функции канала;
 - <mark style="background-color: lightblue">TransformOutValue(val)</mark> - возвращает значение, прошедшее через трансформирующую функцию.
 
@@ -41,8 +41,8 @@
 ### Обработка значений с датчика
 <div style = "color: #555">
 
-В рамках реализации модуля любого датичка, считанное с него значение сохраняется через аксессор *ChN_Value*. Там сырое значение проходит через линейное преобразование, супрессию и помещается в массив, который далее обрабатывает функция-фильтр. После этого этапа производится проверка зон измерения.
-Итоговое значение доступно пользователю через аксессор *Value* класса **ClassChannelSensor**.
+В рамках реализации модуля любого датчика, считанное с него значение сохраняется через аксессор *ChN_Value*, из которого оно передается в *_ValueBuffer*. При вызове геттера *Value* класса **ClassChannelSensor**, все значения из буффера проходят через линейное преобразование, супрессию и далее обрабатываются функцией-фильтром. 
+Если ранее был вызван метод *EnableAlarms()*, то при каждом обновлении буффера производится проверка зон измерения.
 
 <div align='left'>
     <img src="./res/data_transformation.png" alt="Image not found">
@@ -53,7 +53,6 @@
 ### Зависимости
 <div style = "color: #555">
 
-- <mark style="background-color: lightblue">[**ClassAppError**](https://github.com/Konkery/ModuleAppError/blob/main/README.md)</mark>
 </div>
 
 </div>

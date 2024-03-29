@@ -26,12 +26,12 @@
 
 Больше об обработке данных в соответствующем [разделе](./README_DATA_REFINE.md#методы). 
 
-Набор классов, обеспечивающих функционал датчика делитcя на такие части: 
+Набор классов, обеспечивающих функционал датчика, делитcя на следующие части: 
 - Основная, которая состоит из:
     - ветки классов [ClassAncestorSensor](./README_ANCESTOR.md) и [ClassMiddleSensor](./README_MIDDLE.md), хранящих в себе поля и методы, общих для всех датчиков;
-    - класса [ClassChannelSensor](README_CHANNEL.md), который представляет собой интерфейс для работы с отдельным каналом датичка;
+    - класса [ClassChannelSensor](README_CHANNEL.md), который представляет собой интерфейс для работы с отдельным каналом датчика;
 - Сервисная: 
-    - [ClassDataRefine](./README_DATA_REFINE.md) реализует математико-логический аппарат для обработки и корректировки поступаемых значений;
+    - [ClassDataRefine](./README_DATA_REFINE.md) реализует математико-логический аппарат для обработки и корректировки поступаемых с датчика значений;
     - [ClassAlarms](./README_ALARMS.md) добавляет поддержку зон измерения и алармов;  
 - Прикладная - класс, отвечающий за отдельно взятый канал датчика. Этот класс реализуется вне данного стека наследованием от **ClassMiddleSensor** и реализацией его интерфейсов.
 
@@ -46,61 +46,26 @@
 <div style = "color: #555">
 
 ```js
-//Импорт зависимостей
-const ClassAppError     = require('ModuleAppError');
-    require('ModuleAppMath').is();
-const ClassMiddleSensor = require('ModuleSensor');
-const ClassVL6180       = require('ModuleVL6180');
-const ClassI2C          = require('ModuleI2CBus');
-
-const I2Cbus = new ClassI2C();
-const bus = I2Cbus.AddBus({sda: B15, scl: B14, bitrate: 100000 }).IDbus;
-
-const _opts = {
-    bus: bus,           //объект шины
-    pins: [B14, B15],   //массив используемых пинов 
-    address: 0x29       //адрес на шине
-}
-//Аргументы для инициализации объекта датчика
-const sensor_props = ({
-    name: "VL6180",                     
-    type: "sensor",       
-    quantityChannel: 2,
-    channelNames: ['light', 'range'],
-    typeInSignal: "analog",            
-    typeOutSignal: "digital",           
-    busTypes: ["i2c"],                
-    manufacturingData: {
-        IDManufacturing: [                  //о производителе
-            { "Adafruit": "4328435534" }    //прозводитель: артикул
-        ],
-        IDsupplier: [                       //о поставщике
-            { "Adafruit": "4328435534" }    
-        ],
-        HelpSens: "Proximity sensor"        //о самом датичке
-    }
-});
 
 //Создание объекта класса
-//*VL610 - класс, который наследуется от ClassMiddleSensor *
-let vl6180 = new VL6180(opts, sensor_props);
+//*VL610 - класс, который наследуется от ClassMiddleSensor (ClassSensor) *
+let vl6180_channels = SensorManager.CreateSensor(vl6180_id);
 
 //Сохранение ссылок на каналы в переменные
 /* Далее все взаимодействие с датчиком выполняется через эти каналы */
-const ch0 = vl6180.GetChannel(0);
-const ch1 = vl6180.GetChannel(1);
+const ch0 = vl6180_channels[0];
+const ch1 = vl6180_channels[1];
 
 //Установка для 1-го канала корректирующей функции f(x) = 0.1 * x 
 //для преобразования итогового значения в см из мм.
-ch1._DataRefine.SetTransmissionOut(0.1, 0);
+ch1.DataRefine.SetTransmissionOut(0.1, 0);
 //Установка для 1-го канала ограничителей в 0.5 и 20 см
-ch0._DataRefine.SupressOutValue(0.5, 20);
-//Установка глубины фильтрации для 0-го канала
-ch1._DataRefine.SetLim(0.5, 20);
+ch1.DataRefine.SetLim(0.5, 20);
 //Установка глубины фильтрации для 0-го канала
 ch0.SetFilterDepth(5);
 
-ch1._Alarms.SetZones({
+ch1.EnableAlarms();
+ch1.Alarms.SetZones({
     red: {
         low:    5, 
         high:   19,
@@ -146,7 +111,8 @@ setTimeout(() => {
 #### Смена единицы измерения температуры на ходу с помощью настройки линейной функции:
 ```js
 //Инициализация канала, измеряющего температуру в °C 
-const temprtCh = meteoSensor.GetChannel(num);
+let sht_channels = SensorManager.CreateDevice('02');
+let tmprtCh = sht_channels[0];
 
 //Запуск и вывод показаний
 temprtCh.Start();
@@ -173,7 +139,6 @@ setTimeout(() => {
 ### Зависимости
 <div style = "color: #555">
 
-- <mark style="background-color: lightblue">[ClassAppError](https://github.com/Konkery/ModuleAppError/blob/main/README.md)</mark>
 </div>
 
 </div>
