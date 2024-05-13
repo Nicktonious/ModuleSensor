@@ -28,12 +28,16 @@ class ClassAncestorSensor {
      * @param {SensorPropsType} _sensor_props - объект с описательными характеристиками датчика, который передается в метод InitSensProperties
      * @param {SensorOptsType} _opts - объект который содержит минимальный набор параметров, необходимых для обеспечения работы датчика
      */
-    constructor(_opts, _sensor_props) { 
+    constructor(_opts) { 
         this._Bus = _opts.bus;
         this._Pins = _opts.pins || [];
         if (typeof _opts.address == 'number') this._Address = _opts.address;
 
-        this.InitSensProperties(_sensor_props);
+        this.InitSensProperties(_opts);
+
+        if (this._Type === 'hybrid') {
+            this._SubDevice = _opts.subDevice.map(subdevId => SensorManager.CreateDevice(subdevId));
+        }
     }
     /**
      * @method
@@ -101,8 +105,8 @@ class ClassMiddleSensor extends ClassAncestorSensor {
      * @param {SensorPropsType} _sensor_props 
      * @param {SensorOptsType} _opts
      */
-    constructor(_opts, _sensor_props) {
-        ClassAncestorSensor.apply(this, [_opts, _sensor_props]);
+    constructor(_opts) {
+        ClassAncestorSensor.call(this, _opts);
         
         this._Channels = [];
         this._ChStatus = [];
@@ -202,7 +206,14 @@ class ClassMiddleSensor extends ClassAncestorSensor {
      * Метод обязывающий выполнить дополнительную конфигурацию датчика. Это может быть настройка пина прерывания, периодов измерения и прочих шагов, которые в общем случае необходимы для работы датчика, но могут переопределяться в процессе работы, и потому вынесены из метода Init() 
      * @param {Object} [_opts] - объект с конфигурационными параметрами
      */
-    Configure(_opts) { }
+    Configure(_ch_num, _opts) { }
+    /**
+     * @method
+     * Метод, предназначенный для получения дополнительных сведений об измерительном канале или физическом датчике
+     * @param {Number} _ch_num 
+     * @param {Object} _opts 
+     */
+    GetInfo(_ch_num, _opts) { }
     /**
      * @method
      * Метод обязывающий выполнить перезагрузку датчика
@@ -283,8 +294,8 @@ class ClassChannelSensor {
 
         this._DataWasRead = true;
         this._Value = this._DataRefine._FilterFunc(this._ValueBuffer._arr.map(val => {
-            val = this._DataRefine.TransformValue(val);
             val = this._DataRefine.SuppressValue(val);
+            val = this._DataRefine.TransformValue(val);
             return val;
         }));
         return this._Value;
@@ -353,12 +364,12 @@ class ClassChannelSensor {
      * Останавливает цикл, ответственный за опрос указанного канала и запускает его вновь с уже новой частотой. Возобновиться должно обновление всех каналов, которые опрашивались перед остановкой.  
      * @param {Number} _period 
      */
-    ChangeFreq(_period) { return this._ThisSensor.ChangeFreq.call(this._ThisSensor, Array.from(arguments)); }
+    ChangeFreq(_period) { return this._ThisSensor.ChangeFreq.call(this._ThisSensor, arguments); }
     /**
      * @method
      * Выполняет перезагрузку датчика
      */
-    Reset() { return this._ThisSensor.Reset.apply(this._ThisSensor, Array.from(arguments)); }
+    Reset() { return this._ThisSensor.Reset.apply(this._ThisSensor, arguments); }
     /**
      * @method
      * Метод который устанавливает глубину фильтруемых значений
@@ -373,9 +384,9 @@ class ClassChannelSensor {
      * @param {Object} _opts - параметры для запуска
      */
     Run(_opts) { 
-        const args = Array.from(arguments);
-        args.unshift(this._NumChannel);
-        return this._ThisSensor.Run.apply(this._ThisSensor, args);
+        // const args = Array.from(arguments);
+        [].unshift.call(arguments, this._NumChannel);
+        return this._ThisSensor.Run.apply(this._ThisSensor, arguments);
     }
     /**
      * @method
@@ -383,8 +394,9 @@ class ClassChannelSensor {
      * @param {Object} _opts - объект с конфигурационными параметрами
      */
     Configure(_opts) {
-        return this._ThisSensor.Configure.apply(this._ThisSensor, Array.from(arguments));
+        return this._ThisSensor.Configure(this._NumChannel, _opts);
     }
+    GetInfo(_opts) { return this._ThisSensor.GetInfo(this._NumChannel, _opts); }
 }
 /**
  * @class
