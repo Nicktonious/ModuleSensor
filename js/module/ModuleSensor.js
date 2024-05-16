@@ -293,6 +293,8 @@ class ClassChannelSensor {
         if (this._DataWasRead) return this._Value;
 
         this._DataWasRead = true;
+        if (!this._ValueBuffer._arr.length) return 0;
+        
         this._Value = this._DataRefine._FilterFunc(this._ValueBuffer._arr.map(val => {
             val = this._DataRefine.SuppressValue(val);
             val = this._DataRefine.TransformValue(val);
@@ -327,6 +329,13 @@ class ClassChannelSensor {
         this._DataUpdated = true;
         this._DataWasRead = false;
         if (this._Alarms) this._Alarms.CheckZone(this.Value);
+    }
+    /**
+     * @method 
+     * Очищает буфер. Фактически сбрасывает текущее значение канала. 
+     */
+    ClearBuffer() {
+        while (this._ValueBuffer._arr.length > 0) this._ValueBuffer._arr.pop();
     }
     /**
      * @getter
